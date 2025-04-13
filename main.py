@@ -1,42 +1,38 @@
 import pygame
 import sys
+from GameManager import GameManager
 
 # Inicjalizacja pygame
 pygame.init()
 
 # Ustawienia okna
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+SCREEN_WIDTH, SCREEN_HEIGHT = 1280, 720
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Moje Okno")
+pygame.display.set_caption("Jump King AI")
 
-player = pygame.Rect((400, 550, 25, 25))
-ground = pygame.Rect((0, 575, 800, 25))
+ground = pygame.Rect((0, 695, 1280, 25))
 
-# Główna pętla gry
+gameManager = GameManager(screen)
+clock = pygame.time.Clock()
+targetFrameRate = 60
+
+# Main game loop
 running = True
 while running:
-
-    screen.fill((0, 0, 0))
-
-    pygame.draw.rect(screen, (250, 0, 0), player)
-    pygame.draw.rect(screen, (0, 200, 100), ground)
-
-    key = pygame.key.get_pressed()
-    if key[pygame.K_a] == True:
-        player.move_ip(-1, 0)
-    elif key[pygame.K_d] == True:
-        player.move_ip(1, 0)
+    # calculates delta time in seconds
+    dt = clock.tick(targetFrameRate) / 1000
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # Ograniczenie ruchu do granic ekranu
-    if player.left < 0:
-        player.left = 0
-    if player.right > SCREEN_WIDTH:
-        player.right = SCREEN_WIDTH
+    # update logic
+    gameManager.update(dt)
 
+    # render frame
+    screen.fill((0, 0, 0))
+    pygame.draw.rect(screen, (0, 200, 100), ground)
+    gameManager.updateDraw()
     pygame.display.update()
 
 # Zakończenie
