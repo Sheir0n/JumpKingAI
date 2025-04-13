@@ -14,13 +14,13 @@ class Player:
 
         # how many units plyer should be able to move per second
         self.GROUNDSPEED = 275
-        self.AIRSPEED = 400
+        self.AIRSPEED = 500
 
         self.inAir = False
-        self.MAXJUMPCHARGE = 1200
+        self.MAXJUMPCHARGE = 1000
         self.MINJUMPCHARGE = 25
         self.currJumpCharge = 0.0
-        self.jumpChargeRatePerSec = 800
+        self.jumpChargeRatePerSec = 750
         self.jumpDirection = 0
 
         self.GRAVITYRATEPERSEC = 2000
