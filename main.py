@@ -2,15 +2,13 @@ import pygame
 import sys
 from GameManager import GameManager
 
-# Inicjalizacja pygame
+# Pygame initailization
 pygame.init()
 
-# Ustawienia okna
+# Window settings
 SCREEN_WIDTH, SCREEN_HEIGHT = 1280, 720
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Jump King AI")
-
-ground = pygame.Rect((0, 695, 1280, 25))
 
 gameManager = GameManager(screen)
 clock = pygame.time.Clock()
@@ -31,10 +29,11 @@ while running:
 
     # render frame
     screen.fill((0, 0, 0))
-    pygame.draw.rect(screen, (0, 200, 100), ground)
+    gameManager.drawBoard()
+    
     gameManager.updateDraw()
     pygame.display.update()
 
-# Zakończenie
+# Ending
 pygame.quit()
 sys.exit()
