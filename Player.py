@@ -29,42 +29,48 @@ class Player:
 
         # player movement controls
         # later differentiate between ai and human
+        # Zmodyfikowana metoda move w klasie Player
     def move(self, deltaTime):
         key = pygame.key.get_pressed()
+        
+        # Obsługa ruchu poziomego - niezależnie od tego czy gracz jest w powietrzu czy nie
+        if key[pygame.K_a]:
+            if self.inAir:
+                self.posX -= self.AIRSPEED * 0.7 * deltaTime  # Nieco zmniejszona szybkość w powietrzu dla lepszej kontroli
+            else:
+                self.posX -= self.GROUNDSPEED * deltaTime
+        if key[pygame.K_d]:
+            if self.inAir:
+                self.posX += self.AIRSPEED * 0.7 * deltaTime  # Nieco zmniejszona szybkość w powietrzu dla lepszej kontroli
+            else:
+                self.posX += self.GROUNDSPEED * deltaTime
+        
+        # Obsługa skoku tylko gdy gracz jest na ziemi
         if not self.inAir:
-            if not key[pygame.K_SPACE] and self.currJumpCharge == 0:
-                if key[pygame.K_a]:
-                    self.posX -= self.GROUNDSPEED * deltaTime
-                if key[pygame.K_d]:
-                    self.posX += self.GROUNDSPEED * deltaTime
-
-            elif key[pygame.K_SPACE]:
+            if key[pygame.K_SPACE]:
                 self.currJumpCharge = max(self.MINJUMPCHARGE, min(self.currJumpCharge + self.jumpChargeRatePerSec * deltaTime, self.MAXJUMPCHARGE))
                 print("Jump Charge: ", self.currJumpCharge)
-
             elif self.currJumpCharge > 0:
                 self.inAir = True
                 self.upAcceleration = self.currJumpCharge
-
+                
                 self.jumpDirection = 0
+                # Zapisujemy kierunek skoku, ale już poruszamy się w wybranym kierunku powyżej
                 if key[pygame.K_a]:
                     self.jumpDirection -= 1
                 if key[pygame.K_d]:
                     self.jumpDirection += 1
-
+                
                 print("Jump! With charge: ", self.currJumpCharge)
                 print("Direction: ", self.jumpDirection)
-
+                
                 self.currJumpCharge = 0
-
-
         else:
+            # Aktualizacja pozycji pionowej tylko gdy jesteśmy w powietrzu
             self.posY -= self.upAcceleration * deltaTime
-            self.posX += self.AIRSPEED * self.jumpDirection * deltaTime
             self.upAcceleration = max(self.TERMINALVELOCITY, self.upAcceleration - self.GRAVITYRATEPERSEC * deltaTime)
             print("Curr acceleration: ", self.upAcceleration)
-
-
+        
         # update hitbox position
         self.hitbox.topleft = (int(self.posX), int(self.posY))
 
