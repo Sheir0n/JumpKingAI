@@ -12,7 +12,7 @@ pygame.display.set_caption("Jump King AI")
 
 gameManager = GameManager(screen)
 clock = pygame.time.Clock()
-targetFrameRate = 60
+targetFrameRate = 1000
 
 # Main game loop
 running = True

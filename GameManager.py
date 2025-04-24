@@ -38,15 +38,11 @@ class GameManager:
         except FileNotFoundError:
             print("platformData.txt not found.")
 
-    # Poprawiony fragment metody update w gamemanager.py
+    #update function executes each frame
     def update(self, deltaTime):
-        # Zapisujemy poprzednią pozycję Y przed ruchem
-        old_y = self.player.posY
-        
-        # Wykonujemy ruch gracza
         self.player.move(deltaTime)
 
-        # Ograniczenia krawędzi ekranu
+        #screen edge detection
         if self.player.hitbox.left < 0:
             self.player.hitbox.left = 0
             self.player.movePosToHitbox()
@@ -55,56 +51,37 @@ class GameManager:
             self.player.hitbox.right = self.screenWidth
             self.player.movePosToHitbox()
 
-        # Sprawdzamy kolizję z ziemią
-        if self.player.hitbox.bottom > self.screenHeight - 25:
-            self.player.hitbox.bottom = self.screenHeight - 25
-            self.player.movePosToHitbox()
-            self.player.groundCollision()
-        
-        # Flaga do śledzenia, czy gracz stoi na platformie
+
+        # Standing on platform detection flag
         on_platform = False
-        
-        # Detekcja kolizji z platformami
+
+        # Detection when player walks off the platform
         for platform in self.platforms:
-            # Sprawdzamy czy gracz jest nad platformą (poziomo)
-            player_over_platform_horizontally = (
-                self.player.hitbox.right > platform.left and
-                self.player.hitbox.left < platform.right
-            )
-            
-            # Sprawdzamy lądowanie na platformie (kolizja od góry)
-            if player_over_platform_horizontally:
-                # Gracz spadał (poprzednia pozycja była wyżej niż obecna)
-                is_falling = old_y < self.player.posY
-                
-                # Sprawdzamy czy spód gracza jest w zakresie kolizji z górą platformy
-                feet_at_platform_level = (
-                    self.player.hitbox.bottom >= platform.top and
-                    self.player.hitbox.bottom <= platform.top + 20  # Tolerancja kolizji
-                )
-                
-                if is_falling and feet_at_platform_level:
-                    # Ustawiamy gracza na górze platformy
-                    self.player.hitbox.bottom = platform.top
-                    self.player.movePosToHitbox()
-                    self.player.groundCollision()
-                    on_platform = True
-                    break  # Przerywamy pętlę, bo gracz już wylądował
-        
-        # Jeśli gracz nie stoi na ziemi ani na platformie, powinien spadać
-        if not on_platform and self.player.hitbox.bottom < self.screenHeight - 25:
-            if not self.player.inAir:
-                self.player.inAir = True
-                self.player.upAcceleration = 0  # Zaczynamy spadać
 
-           
+            if self.player_over_platform_horizontally(platform) and platform.top >= self.player.hitbox.bottom > platform.top - 5:
+                on_platform = True
+                break
+
+        if not on_platform:
+            self.player.inAir = True
+
+        # Jumping collision detection (only from above for now)
+        #TODO: other directions
+        for platform in self.platforms:
+            # od góry
+            if  self.player_over_platform_horizontally(platform) and platform.top < self.player.hitbox.bottom < platform.center[1]:
+                self.player.hitbox.bottom = platform.top
+                self.player.groundCollision()
+                self.player.movePosToHitbox()
+
+    def player_over_platform_horizontally(self, platform):
+        if self.player.hitbox.right > platform.left and self.player.hitbox.left < platform.right:
+            return True
+        else:
+            return False
 
 
-    
     def drawBoard(self):
-        ground = pygame.Rect((0, self.screenHeight - 25, self.screenWidth, 25))
-        pygame.draw.rect(self.screen, (0, 200, 100), ground)
-
         for platform in self.platforms:
             pygame.draw.rect(self.screen, (0, 200, 100), platform)
 
