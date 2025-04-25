@@ -65,58 +65,34 @@ class GameManager:
         if not on_platform:
             self.player.inAir = True
 
-        # Jumping collision detection (only from above for now)
-        #TODO: other directions
+        # Jumping collision detection
         for platform in self.platforms:
-            # flag that checks if collision has been handled
-            # in case of lag or weird angle still allows for player model to react
-            collision_handled = False
-
-            if self.player_over_platform_horizontally(platform):
-                # from above
-
+            if self.player_colliding(platform):
                 top_overlap_distance = self.player.hitbox.bottom - platform.top
                 bot_overlap_distance = platform.bottom - self.player.hitbox.top
-
-                if  0 < top_overlap_distance < 8:
-                    self.player.platform_top_collision(platform.top)
-                    collision_handled = True
-
-                # from below
-                elif 0 < bot_overlap_distance < 8:
-                    self.player.platform_bot_collision(platform.bottom)
-                    collision_handled = True
-
-            if self.player_next_to_platform_vertically(platform):
                 left_overlap_distance = self.player.hitbox.right - platform.left
                 right_overlap_distance = platform.right - self.player.hitbox.left
 
-                # from the left
-                if 0 < left_overlap_distance < 8:
+                min_overlap = min(top_overlap_distance, bot_overlap_distance, left_overlap_distance, right_overlap_distance)
+
+                # direction is determined from overlap distances
+                if top_overlap_distance <= min_overlap:
+                    self.player.platform_top_collision(platform.top)
+
+                elif bot_overlap_distance <= min_overlap:
+                   self.player.platform_bot_collision(platform.bottom)
+
+                elif left_overlap_distance <= min_overlap:
                     self.player.platform_left_collision(platform.left)
-                    collision_handled = True
 
-                # from the right
-                elif 0 < right_overlap_distance < 8:
+                elif right_overlap_distance <= min_overlap:
                     self.player.platform_right_collision(platform.right)
-                    collision_handled = True
 
-            # additional collision check in case of weird angle
-            if not collision_handled and self.player_over_platform_horizontally(platform) and self.player_next_to_platform_vertically(platform):
-                self.player.platform_top_collision(platform.top)
-
-    def player_over_platform_horizontally(self, platform):
-        if self.player.hitbox.right > platform.left and self.player.hitbox.left < platform.right:
+    def player_colliding(self, platform):
+        if (self.player.hitbox.bottom > platform.top and self.player.hitbox.top < platform.bottom) and (self.player.hitbox.right > platform.left and self.player.hitbox.left < platform.right):
             return True
         else:
             return False
-
-    def player_next_to_platform_vertically(self, platform):
-        if self.player.hitbox.bottom > platform.top and self.player.hitbox.top < platform.bottom:
-            return True
-        else:
-            return False
-
 
     def drawBoard(self):
         for platform in self.platforms:
