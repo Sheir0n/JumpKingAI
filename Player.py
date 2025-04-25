@@ -17,14 +17,14 @@ class Player:
         self.AIRSPEED = 500
 
         self.inAir = False
-        self.MAXJUMPCHARGE = 1000
-        self.MINJUMPCHARGE = 25
+        self.MAXJUMPCHARGE = 1200
+        self.MINJUMPCHARGE = 10
         self.currJumpCharge = 0.0
-        self.jumpChargeRatePerSec = 750
+        self.jumpChargeRatePerSec = 800
         self.jumpDirection = 0
 
-        self.GRAVITYRATEPERSEC = 2000
-        self.TERMINALVELOCITY = -1250
+        self.GRAVITYRATEPERSEC = 2500
+        self.TERMINALVELOCITY = -1500
         self.upAcceleration = 0.0
 
     # player movement controls
@@ -69,11 +69,30 @@ class Player:
         self.hitbox.topleft = (int(self.posX), int(self.posY))
 
     # move position of player float x and y postion to new hitbox position
-    def movePosToHitbox(self):
+    def move_pos_to_hitbox(self):
         self.posX = self.hitbox.topleft[0]
         self.posY = self.hitbox.topleft[1]
 
-    def groundCollision(self):
+
+    # methods performed on collision detection
+    def platform_top_collision(self,platform_top_position):
+        self.hitbox.bottom = platform_top_position
         self.upAcceleration = 0
         self.inAir = False
         self.jumpDirection = 0
+        self.move_pos_to_hitbox()
+
+    def platform_bot_collision(self,platform_bot_position):
+        self.hitbox.top = platform_bot_position
+        self.upAcceleration = 0
+        self.move_pos_to_hitbox()
+
+    def platform_left_collision(self,platform_left_position):
+        self.hitbox.right = platform_left_position
+        self.jumpDirection = abs(self.jumpDirection) * -0.75
+        self.move_pos_to_hitbox()
+
+    def platform_right_collision(self, platform_right_position):
+        self.hitbox.left = platform_right_position
+        self.jumpDirection = abs(self.jumpDirection) * 0.75
+        self.move_pos_to_hitbox()
