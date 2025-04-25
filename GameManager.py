@@ -67,6 +67,7 @@ class GameManager:
 
         # Jumping collision detection
         for platform in self.platforms:
+
             if self.player_colliding(platform):
                 top_overlap_distance = self.player.hitbox.bottom - platform.top
                 bot_overlap_distance = platform.bottom - self.player.hitbox.top
@@ -75,7 +76,7 @@ class GameManager:
 
                 min_overlap = min(top_overlap_distance, bot_overlap_distance, left_overlap_distance, right_overlap_distance)
 
-                # direction is determined from overlap distances
+                print("colliding")
                 if top_overlap_distance <= min_overlap:
                     self.player.platform_top_collision(platform.top)
 
@@ -87,6 +88,13 @@ class GameManager:
 
                 elif right_overlap_distance <= min_overlap:
                     self.player.platform_right_collision(platform.right)
+
+
+    def player_over_platform_horizontally(self, platform):
+        if self.player.hitbox.right > platform.left and self.player.hitbox.left < platform.right:
+            return True
+        else:
+            return False
 
     def player_colliding(self, platform):
         if (self.player.hitbox.bottom > platform.top and self.player.hitbox.top < platform.bottom) and (self.player.hitbox.right > platform.left and self.player.hitbox.left < platform.right):
