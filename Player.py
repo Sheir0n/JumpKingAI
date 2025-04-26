@@ -1,6 +1,4 @@
 import pygame
-from pygame.examples.moveit import HEIGHT
-
 
 class Player:
     def __init__(self, posX, posY):
@@ -26,6 +24,9 @@ class Player:
         self.GRAVITYRATEPERSEC = 2500
         self.TERMINALVELOCITY = -1500
         self.upAcceleration = 0.0
+
+        self.highscore_reward_level = 0
+        self.curr_reward_level = 0
 
     # player movement controls
     # later differentiate between ai and human
@@ -96,3 +97,12 @@ class Player:
         self.hitbox.left = platform_right_position
         self.jumpDirection = abs(self.jumpDirection) * 0.75
         self.move_pos_to_hitbox()
+
+    def check_reward(self,new_level):
+        if new_level == self.curr_reward_level:
+            return
+        else:
+            self.curr_reward_level = new_level
+            if new_level > self.highscore_reward_level:
+                self.highscore_reward_level = new_level
+                print("Highscore! Platform: ", new_level)
