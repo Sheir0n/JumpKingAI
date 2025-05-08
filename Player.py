@@ -1,7 +1,11 @@
+from enum import Enum
+
 import pygame
+from InputController import PlayerInputController
+from InputController import NEATInputController
 
 class Player:
-    def __init__(self, posX, posY):
+    def __init__(self, posX, posY, player_controlled):
         self.WIDTH = 30
         self.HEIGHT = 50
 
@@ -28,20 +32,27 @@ class Player:
         self.highscore_reward_level = 0
         self.curr_reward_level = 0
 
+        if(player_controlled):
+            self.controller = PlayerInputController()
+        else:
+            self.controller = NEATInputController()
+
     # player movement controls
     # later differentiate between ai and human
-    def move(self, deltaTime):
-        key = pygame.key.get_pressed()
-        if not self.inAir:
-            if not key[pygame.K_SPACE] and self.currJumpCharge == 0:
-                if key[pygame.K_a]:
-                    self.posX -= self.GROUNDSPEED * deltaTime
-                if key[pygame.K_d]:
-                    self.posX += self.GROUNDSPEED * deltaTime
+    def move(self, delta_time):
+        #key = pygame.key.get_pressed()
+        state = self.controller.get_input()
 
-            elif key[pygame.K_SPACE]:
+        if not self.inAir:
+            if not state["jump"] and self.currJumpCharge == 0:
+                if state["left"]:
+                    self.posX -= self.GROUNDSPEED * delta_time
+                if state["right"]:
+                    self.posX += self.GROUNDSPEED * delta_time
+
+            elif state["jump"]:
                 self.currJumpCharge = max(self.MINJUMPCHARGE,
-                                          min(self.currJumpCharge + self.jumpChargeRatePerSec * deltaTime,
+                                          min(self.currJumpCharge + self.jumpChargeRatePerSec * delta_time,
                                               self.MAXJUMPCHARGE))
                 #print("Jump Charge: ", self.currJumpCharge)
 
@@ -50,9 +61,9 @@ class Player:
                 self.upAcceleration = self.currJumpCharge
 
                 self.jumpDirection = 0
-                if key[pygame.K_a]:
+                if state["left"]:
                     self.jumpDirection -= 1
-                if key[pygame.K_d]:
+                if state["right"]:
                     self.jumpDirection += 1
 
                 #print("Jump! With charge: ", self.currJumpCharge)
@@ -60,10 +71,10 @@ class Player:
 
                 self.currJumpCharge = 0
         else:
-            self.posY -= self.upAcceleration * deltaTime
-            self.posX += self.AIRSPEED * self.jumpDirection * deltaTime
+            self.posY -= self.upAcceleration * delta_time
+            self.posX += self.AIRSPEED * self.jumpDirection * delta_time
             self.upAcceleration = max(self.TERMINALVELOCITY,
-                                      self.upAcceleration - self.GRAVITYRATEPERSEC * deltaTime)
+                                      self.upAcceleration - self.GRAVITYRATEPERSEC * delta_time)
             #print("Curr acceleration: ", self.upAcceleration)
 
         # update hitbox position

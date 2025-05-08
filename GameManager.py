@@ -20,7 +20,7 @@ class GameManager:
 
     def createPlayer(self):
         #spawn player standing at position center
-        self.player = Player( self.screenWidth/2, self.screenHeight-128)
+        self.player = Player( self.screenWidth/2, self.screenHeight-128, True)
 
     def generatePlatforms(self):
         self.platforms.clear()
