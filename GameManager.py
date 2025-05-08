@@ -4,10 +4,11 @@ from Platform import Platform
 from ScreenTransitionManager import ScreenTransitionManager
 import os
 class GameManager:
-    def __init__(self, screen):
+    def __init__(self, screen, isPlayerControlled):
         #screen reference
         self.screen = screen
         self.player = None
+        self.isPlayerControlled = isPlayerControlled
 
         self.screenWidth = self.screen.get_width()
         self.screenHeight = self.screen.get_height()
@@ -17,10 +18,13 @@ class GameManager:
         self.createPlayer()
         self.platforms = []
         self.generatePlatforms()
+        self.maxScore = len(self.platforms)-3
+        print(self.maxScore)
+        self.win = False
 
     def createPlayer(self):
         #spawn player standing at position center
-        self.player = Player( self.screenWidth/2, self.screenHeight-128, True)
+        self.player = Player( self.screenWidth/2, self.screenHeight-128, self.isPlayerControlled)
 
     def generatePlatforms(self):
         self.platforms.clear()
@@ -68,6 +72,13 @@ class GameManager:
             if self.player_over_platform_horizontally(platform) and platform.hitbox.top >= self.player.hitbox.bottom > platform.hitbox.top - 5:
                 on_platform = True
                 self.player.check_reward(platform.reward_level)
+                if platform.reward_level == self.maxScore:
+                    if self.isPlayerControlled:
+                        self.victoryWindow()
+                        self.win=True
+                        return
+                    else:
+                        self.player = None
                 break
 
         if not on_platform:
@@ -118,3 +129,26 @@ class GameManager:
     # player and object graphics
     def updateDraw(self):
         pygame.draw.rect(self.screen, (250, 0, 0), self.player.hitbox)
+
+    def victoryWindow(self):
+        SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("Victory Screen")
+
+        WHITE = (255, 255, 255)
+        BLACK = (0, 0, 0)
+        font = pygame.font.SysFont(None, 72)
+
+        text = font.render("You win!", True, WHITE)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+
+        running = True
+        while running:
+            screen.fill(BLACK)
+            screen.blit(text, text_rect)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+            pygame.display.flip()
