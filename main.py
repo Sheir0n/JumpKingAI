@@ -1,12 +1,14 @@
 import pygame
 import sys
 from GameManager import GameManager
+from AIManager import AIManager
 
 def gameWindow():
     gameManager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
     targetFrameRate = 1000
-
+    if selected_index == 0:
+        AIManager(gameManager)
     # Main game loop
     running = True
     while running:

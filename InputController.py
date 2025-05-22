@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import pygame
+import neat
 
 # base input controller class
 class InputController(ABC):
@@ -34,8 +35,33 @@ class PlayerInputController(InputController):
 
 # TODO: NEAT inputs
 class NEATInputController(InputController):
+    def __init__(self, neat_network, get_observation, thr=0.5, hold_frames=3):
+        """
+        neat_network  –  obiekt sieci (neat.nn.FeedForwardNetwork)
+        get_observation() -> tuple/list – funkcja zwracająca wejścia dla sieci
+        thr            –  próg aktywacji (0-1) zamieniający wyjście sieci na bool
+        hold_frames    –  ile klatek ma trwać 'przytrzymanie' skoku,
+                          gdy wyjście jump > thr
+        """
+        self.net = neat_network
+        self.obs_fn = get_observation
+        self.thr = thr
+        self.hold_frames = hold_frames
+        self._jump_buffer = 0   # licznik „przytrzymania”
+
     def get_input(self):
-        state = {}
-        for action in self.bindings.items():
-            state[action] = False
-        return state
+        inputs = self.obs_fn()                 # pobieramy aktualny stan gry
+        left_out, right_out, jump_out = self.net.activate(inputs)
+
+        # --- skok z buforem przytrzymania ---------------------------------
+        if jump_out > self.thr:
+            self._jump_buffer = self.hold_frames
+        else:
+            self._jump_buffer = max(0, self._jump_buffer - 1)
+
+        return {
+            "left":  left_out  > self.thr,
+            "right": right_out > self.thr,
+            "jump":  self._jump_buffer > 0
+        }
+

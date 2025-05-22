@@ -152,3 +152,8 @@ class GameManager:
                     running = False
 
             pygame.display.flip()
+
+    def build_observation(self):
+        player = self.player
+        nextPlatform = self.platforms[player.curr_reward_level+1]
+        return [player.posX, player.posY, nextPlatform.x_pos, nextPlatform.y_pos, player.inAir, player.upAcceleration] 

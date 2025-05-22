@@ -34,9 +34,9 @@ class Player:
 
         if(player_controlled):
             self.controller = PlayerInputController()
-        else:
-            self.controller = NEATInputController()
 
+    def AIInputs(self, neat_network, get_observation):
+        self.controller = NEATInputController(neat_network, get_observation)
     # player movement controls
     # later differentiate between ai and human
     def move(self, delta_time):
