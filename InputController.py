@@ -58,7 +58,7 @@ class NEATInputController(InputController):
             self._jump_buffer = self.hold_frames
         else:
             self._jump_buffer = max(0, self._jump_buffer - 1)
-
+    
         return {
             "left":  left_out  > self.thr,
             "right": right_out > self.thr,

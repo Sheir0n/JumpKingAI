@@ -19,6 +19,6 @@ class AIManager:
             nets.append(net)
             g.fitness = 0
             
-            self.gameManager.player.AIInputs(net, self.gameManager.build_observation)
+            self.gameManager.player.AIInputs(net, self.gameManager.build_observation, g)
             players.append(self.gameManager.player)
             

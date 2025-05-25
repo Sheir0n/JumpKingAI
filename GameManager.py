@@ -19,7 +19,6 @@ class GameManager:
         self.platforms = []
         self.generatePlatforms()
         self.maxScore = len(self.platforms)-3
-        print(self.maxScore)
         self.win = False
 
     def createPlayer(self):
@@ -61,7 +60,6 @@ class GameManager:
         if self.player.hitbox.right > self.screenWidth:
             self.player.hitbox.right = self.screenWidth
             self.player.move_pos_to_hitbox()
-
 
         # Standing on platform detection flag
         on_platform = False
@@ -155,5 +153,8 @@ class GameManager:
 
     def build_observation(self):
         player = self.player
-        nextPlatform = self.platforms[player.curr_reward_level+1]
-        return [player.posX, player.posY, nextPlatform.x_pos, nextPlatform.y_pos, player.inAir, player.upAcceleration] 
+        for p in self.platforms:
+            if p.reward_level == self.player.curr_reward_level+1:
+                nextPlatform : Platform = p
+                break
+        return [player.posX, player.posY, nextPlatform.hitbox.centerx, nextPlatform.hitbox.centery, player.inAir, player.upAcceleration] 

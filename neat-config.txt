@@ -6,7 +6,7 @@ reset_on_extinction   = False
 
 [DefaultGenome]
 # These must be present:
-activation_default      = tanh
+activation_default      = sigmoid
 activation_mutate_rate  = 0.0
 activation_options      = tanh
 

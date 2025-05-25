@@ -32,11 +32,19 @@ class Player:
         self.highscore_reward_level = 0
         self.curr_reward_level = 0
 
+        # used only in AI mode
+        self.fitness = None
+        self.genome = None
+
         if(player_controlled):
             self.controller = PlayerInputController()
 
-    def AIInputs(self, neat_network, get_observation):
+    # used by AI Manager
+    def AIInputs(self, neat_network, get_observation, genome):
         self.controller = NEATInputController(neat_network, get_observation)
+        self.genome = genome
+        self.genome.fitness = 0
+
     # player movement controls
     # later differentiate between ai and human
     def move(self, delta_time):
@@ -113,7 +121,11 @@ class Player:
         if new_level == self.curr_reward_level:
             return
         else:
+            if self.curr_reward_level > new_level and self.genome != None:
+                self.genome.fitness -= 5*(new_level-self.highscore_reward_level)
             self.curr_reward_level = new_level
             if new_level > self.highscore_reward_level:
+                if self.genome != None:
+                    self.genome.fitness += 10*(new_level-self.highscore_reward_level)
                 self.highscore_reward_level = new_level
                 print("Highscore! Platform: ", new_level)

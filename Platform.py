@@ -4,5 +4,3 @@ class Platform:
     def __init__(self, x_pos, y_pos, width, height, reward_level):
         self.hitbox = pygame.Rect(x_pos, y_pos, width, height)
         self.reward_level = reward_level
-        self.x_pos = x_pos
-        self.y_pos = y_pos
