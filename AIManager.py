@@ -2,6 +2,7 @@ import neat
 import neat.population
 from GameManager import GameManager
 from Platform import Platform
+from Player import Player
 
 class AIManager:
     def __init__(self, gameManager: GameManager):
@@ -18,7 +19,20 @@ class AIManager:
             net = neat.nn.FeedForwardNetwork.create(g, config)
             nets.append(net)
             g.fitness = 0
+            self.gameManager.createPlayer()
+            currentPlayer = self.gameManager.players[len(self.gameManager.players)-1]
+
+            for p in self.gameManager.platforms:
+                if p.reward_level == currentPlayer.curr_reward_level+1:
+                    nextPlatform : Platform = p
+                    break
+            observation = [currentPlayer.posX/self.gameManager.screenWidth, currentPlayer.posY/self.gameManager.screenWidth, nextPlatform.hitbox.centerx/self.gameManager.screenWidth, nextPlatform.hitbox.centery/self.gameManager.screenHeight, currentPlayer.inAir, currentPlayer.upAcceleration] 
+
+            currentPlayer.AIInputs(
+            net,
+            lambda: self.gameManager.build_observation(currentPlayer),  # przekazujemy kontekst gracza
+            g
+            )
+            players.append(currentPlayer)
             
-            self.gameManager.player.AIInputs(net, self.gameManager.build_observation, g)
-            players.append(self.gameManager.player)
             

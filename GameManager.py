@@ -7,7 +7,7 @@ class GameManager:
     def __init__(self, screen, isPlayerControlled):
         #screen reference
         self.screen = screen
-        self.player = None
+        self.players = []
         self.isPlayerControlled = isPlayerControlled
 
         self.screenWidth = self.screen.get_width()
@@ -15,7 +15,9 @@ class GameManager:
 
         self.transition_manager = ScreenTransitionManager(self.screenHeight)
 
-        self.createPlayer()
+        if isPlayerControlled:
+            self.createPlayer()
+
         self.platforms = []
         self.generatePlatforms()
         self.maxScore = len(self.platforms)-3
@@ -23,7 +25,7 @@ class GameManager:
 
     def createPlayer(self):
         #spawn player standing at position center
-        self.player = Player( self.screenWidth/2, self.screenHeight-128, self.isPlayerControlled)
+        self.players.append(Player( self.screenWidth/2, self.screenHeight-128, self.isPlayerControlled))
 
     def generatePlatforms(self):
         self.platforms.clear()
@@ -47,75 +49,76 @@ class GameManager:
                         self.platforms.append(platform)
         except FileNotFoundError:
             print("platformData.txt not found.")
+        self.platforms.sort(key=lambda p: p.reward_level)
+
 
     #update function executes each frame
     def update(self, delta_time):
-        self.player.move(delta_time)
+        for p in self.players:
+            p.move(delta_time)
 
-        #screen edge detection
-        if self.player.hitbox.left < 0:
-            self.player.hitbox.left = 0
-            self.player.move_pos_to_hitbox()
+            #screen edge detection
+            if p.hitbox.left < 0:
+                p.hitbox.left = 0
+                p.move_pos_to_hitbox()
 
-        if self.player.hitbox.right > self.screenWidth:
-            self.player.hitbox.right = self.screenWidth
-            self.player.move_pos_to_hitbox()
+            if p.hitbox.right > self.screenWidth:
+                p.hitbox.right = self.screenWidth
+                p.move_pos_to_hitbox()
 
-        # Standing on platform detection flag
-        on_platform = False
+            # Standing on platform detection flag
+            on_platform = False
 
-        # Detection when player walks off the platform
-        for platform in self.platforms:
+            # Detection when player walks off the platform
+            for platform in self.platforms:
 
-            if self.player_over_platform_horizontally(platform) and platform.hitbox.top >= self.player.hitbox.bottom > platform.hitbox.top - 5:
-                on_platform = True
-                self.player.check_reward(platform.reward_level)
-                if platform.reward_level == self.maxScore:
-                    if self.isPlayerControlled:
-                        self.victoryWindow()
-                        self.win=True
-                        return
-                    else:
-                        self.player = None
-                break
+                if self.player_over_platform_horizontally(platform, p) and platform.hitbox.top >= p.hitbox.bottom > platform.hitbox.top - 5:
+                    on_platform = True
+                    p.check_reward(platform.reward_level)
+                    if platform.reward_level == self.maxScore:
+                        if self.isPlayerControlled:
+                            self.victoryWindow()
+                            self.win=True
+                            return
+                    break
 
-        if not on_platform:
-            self.player.inAir = True
+            if not on_platform:
+                p.inAir = True
 
-        # Jumping collision detection
-        for platform in self.platforms:
+            # Jumping collision detection
+            for platform in self.platforms:
 
-            if self.player_colliding(platform):
-                top_overlap_distance = self.player.hitbox.bottom - platform.hitbox.top
-                bot_overlap_distance = platform.hitbox.bottom - self.player.hitbox.top
-                left_overlap_distance = self.player.hitbox.right - platform.hitbox.left
-                right_overlap_distance = platform.hitbox.right - self.player.hitbox.left
+                if self.player_colliding(platform, p):
+                    top_overlap_distance = p.hitbox.bottom - platform.hitbox.top
+                    bot_overlap_distance = platform.hitbox.bottom - p.hitbox.top
+                    left_overlap_distance = p.hitbox.right - platform.hitbox.left
+                    right_overlap_distance = platform.hitbox.right - p.hitbox.left
 
-                min_overlap = min(top_overlap_distance, bot_overlap_distance, left_overlap_distance, right_overlap_distance)
+                    min_overlap = min(top_overlap_distance, bot_overlap_distance, left_overlap_distance, right_overlap_distance)
 
-                if top_overlap_distance <= min_overlap:
-                    self.player.platform_top_collision(platform.hitbox.top)
+                    if top_overlap_distance <= min_overlap:
+                        p.platform_top_collision(platform.hitbox.top)
 
-                elif bot_overlap_distance <= min_overlap:
-                   self.player.platform_bot_collision(platform.hitbox.bottom)
+                    elif bot_overlap_distance <= min_overlap:
+                        p.platform_bot_collision(platform.hitbox.bottom)
 
-                elif left_overlap_distance <= min_overlap:
-                    self.player.platform_left_collision(platform.hitbox.left)
+                    elif left_overlap_distance <= min_overlap:
+                        p.platform_left_collision(platform.hitbox.left)
 
-                elif right_overlap_distance <= min_overlap:
-                    self.player.platform_right_collision(platform.hitbox.right)
+                    elif right_overlap_distance <= min_overlap:
+                        p.platform_right_collision(platform.hitbox.right)
 
-        # off screen offset adjustment
-        self.transition_manager.adjust_offscreen_pos(self.player,self.platforms)
+            # off screen offset adjustment
+            self.transition_manager.adjust_offscreen_pos(p, self.platforms)
 
-    def player_over_platform_horizontally(self, platform):
-        if self.player.hitbox.right > platform.hitbox.left and self.player.hitbox.left < platform.hitbox.right:
+    def player_over_platform_horizontally(self, platform, player):
+        if player.hitbox.right > platform.hitbox.left and player.hitbox.left < platform.hitbox.right:
             return True
         else:
             return False
 
-    def player_colliding(self, platform):
-        if (self.player.hitbox.bottom > platform.hitbox.top and self.player.hitbox.top < platform.hitbox.bottom) and (self.player.hitbox.right > platform.hitbox.left and self.player.hitbox.left < platform.hitbox.right):
+    def player_colliding(self, platform, player):
+        if (player.hitbox.bottom > platform.hitbox.top and player.hitbox.top < platform.hitbox.bottom) and (player.hitbox.right > platform.hitbox.left and player.hitbox.left < platform.hitbox.right):
             return True
         else:
             return False
@@ -126,7 +129,8 @@ class GameManager:
 
     # player and object graphics
     def updateDraw(self):
-        pygame.draw.rect(self.screen, (250, 0, 0), self.player.hitbox)
+        for p in self.players:
+            pygame.draw.rect(self.screen, (250, 0, 0), p.hitbox)
 
     def victoryWindow(self):
         SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
@@ -151,10 +155,10 @@ class GameManager:
 
             pygame.display.flip()
 
-    def build_observation(self):
-        player = self.player
+    def build_observation(self, player):
+        #player = self.players[0]
         for p in self.platforms:
-            if p.reward_level == self.player.curr_reward_level+1:
+            if p.reward_level == player.curr_reward_level+1:
                 nextPlatform : Platform = p
                 break
-        return [player.posX, player.posY, nextPlatform.hitbox.centerx, nextPlatform.hitbox.centery, player.inAir, player.upAcceleration] 
+        return [player.posX/self.screenWidth, player.posY/self.screenWidth, nextPlatform.hitbox.centerx/self.screenWidth, nextPlatform.hitbox.centery/self.screenHeight, player.inAir, player.upAcceleration] 
