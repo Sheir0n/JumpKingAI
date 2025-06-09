@@ -3,6 +3,10 @@ from Player import Player
 from Platform import Platform
 from ScreenTransitionManager import ScreenTransitionManager
 import os
+
+
+
+
 class GameManager:
     def __init__(self, screen, isPlayerControlled):
         #screen reference
@@ -56,6 +60,8 @@ class GameManager:
     def update(self, delta_time):
         for p in self.players:
             p.move(delta_time)
+            p.calculate_total_reward((self.screenHeight-p.posY)/self.screenHeight)
+            print(p.highscore_total_reward)
 
             #screen edge detection
             if p.hitbox.left < 0:
@@ -74,7 +80,7 @@ class GameManager:
 
                 if self.player_over_platform_horizontally(platform, p) and platform.hitbox.top >= p.hitbox.bottom > platform.hitbox.top - 5:
                     on_platform = True
-                    p.check_reward(platform.reward_level)
+                    p.check_platform_reward(platform.reward_level)
                     if platform.reward_level == self.maxScore:
                         if self.isPlayerControlled:
                             self.victoryWindow()
@@ -158,7 +164,7 @@ class GameManager:
     def build_observation(self, player):
         #player = self.players[0]
         for p in self.platforms:
-            if p.reward_level == player.curr_reward_level+1:
+            if p.reward_level == player.curr_platform_reward_level+1:
                 nextPlatform : Platform = p
                 break
         return [player.posX/self.screenWidth, player.posY/self.screenWidth, nextPlatform.hitbox.centerx/self.screenWidth, nextPlatform.hitbox.centery/self.screenHeight, player.inAir, player.upAcceleration] 

@@ -21,9 +21,10 @@ class AIManager:
             g.fitness = 0
             self.gameManager.createPlayer()
             currentPlayer = self.gameManager.players[len(self.gameManager.players)-1]
+            print("nowy ai gracz")
 
             for p in self.gameManager.platforms:
-                if p.reward_level == currentPlayer.curr_reward_level+1:
+                if p.reward_level == currentPlayer.curr_platform_reward_level+1:
                     nextPlatform : Platform = p
                     break
             observation = [currentPlayer.posX/self.gameManager.screenWidth, currentPlayer.posY/self.gameManager.screenWidth, nextPlatform.hitbox.centerx/self.gameManager.screenWidth, nextPlatform.hitbox.centery/self.gameManager.screenHeight, currentPlayer.inAir, currentPlayer.upAcceleration] 

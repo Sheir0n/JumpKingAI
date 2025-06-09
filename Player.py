@@ -29,8 +29,9 @@ class Player:
         self.TERMINALVELOCITY = -1500
         self.upAcceleration = 0.0
 
-        self.highscore_reward_level = 0
-        self.curr_reward_level = 0
+        self.highscore_platform_reward_level = 0
+        self.curr_platform_reward_level = 0
+        self.highscore_total_reward = 0
 
         # used only in AI mode
         self.fitness = None
@@ -49,6 +50,7 @@ class Player:
     # later differentiate between ai and human
     def move(self, delta_time):
         #key = pygame.key.get_pressed()
+
         state = self.controller.get_input()
 
         if not self.inAir:
@@ -117,15 +119,22 @@ class Player:
         self.jumpDirection = abs(self.jumpDirection) * 0.75
         self.move_pos_to_hitbox()
 
-    def check_reward(self,new_level):
-        if new_level == self.curr_reward_level:
+    def check_platform_reward(self, new_level):
+        if new_level == self.curr_platform_reward_level:
             return
         else:
-            if self.curr_reward_level > new_level and self.genome != None:
-                self.genome.fitness -= 5*(new_level-self.highscore_reward_level)
-            self.curr_reward_level = new_level
-            if new_level > self.highscore_reward_level:
-                if self.genome != None:
-                    self.genome.fitness += 10*(new_level-self.highscore_reward_level)
-                self.highscore_reward_level = new_level
+            # if self.curr_platform_reward_level > new_level and self.genome != None:
+            #     self.genome.fitness -= 5*(new_level - self.highscore_platform_reward_level)
+            self.curr_platform_reward_level = new_level
+            if new_level > self.highscore_platform_reward_level:
+                # if self.genome != None:
+                #     self.genome.fitness += 10*(new_level - self.highscore_platform_reward_level)
+                self.highscore_platform_reward_level = new_level
                 print("Highscore! Platform: ", new_level)
+
+    def calculate_total_reward(self, scaled_y_reward):
+        total_reward = self.curr_platform_reward_level + scaled_y_reward
+        if self.highscore_total_reward < total_reward:
+            self.highscore_total_reward = total_reward
+        if self.genome != None:
+            self.genome.fitness = self.highscore_total_reward

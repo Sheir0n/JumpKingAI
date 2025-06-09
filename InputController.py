@@ -54,6 +54,9 @@ class NEATInputController(InputController):
         left_out, right_out, jump_out = self.net.activate(inputs)
 
         # --- skok z buforem przytrzymania ---------------------------------
+        
+        #print(f"inputs={inputs}")
+        #print(f"outputs: left={left_out:.2f}, right={right_out:.2f}, jump={jump_out:.2f}, buffer={self._jump_buffer}")
         if jump_out > self.thr:
             self._jump_buffer = self.hold_frames
         else:
