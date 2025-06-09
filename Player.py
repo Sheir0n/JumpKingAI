@@ -25,13 +25,18 @@ class Player:
         self.jumpChargeRatePerSec = 800
         self.jumpDirection = 0
 
-        self.GRAVITYRATEPERSEC = 2500
+        self.GRAVITYRATEPERSEC = 2600
         self.TERMINALVELOCITY = -1500
         self.upAcceleration = 0.0
 
         self.highscore_platform_reward_level = 0
         self.curr_platform_reward_level = 0
         self.highscore_total_reward = 0
+
+        self.curr_platform_id = 0
+
+        self.was_jumping_last_frame = False
+        self.jump_count = 0
 
         # used only in AI mode
         self.fitness = None
@@ -50,8 +55,8 @@ class Player:
     # later differentiate between ai and human
     def move(self, delta_time):
         #key = pygame.key.get_pressed()
-
         state = self.controller.get_input()
+        self.was_jumping_last_frame = state.get("jump", False)
 
         if not self.inAir:
             if not state["jump"] and self.currJumpCharge == 0:
@@ -64,7 +69,6 @@ class Player:
                 self.currJumpCharge = max(self.MINJUMPCHARGE,
                                           min(self.currJumpCharge + self.jumpChargeRatePerSec * delta_time,
                                               self.MAXJUMPCHARGE))
-                #print("Jump Charge: ", self.currJumpCharge)
 
             elif self.currJumpCharge > 0:
                 self.inAir = True
@@ -76,8 +80,7 @@ class Player:
                 if state["right"]:
                     self.jumpDirection += 1
 
-                #print("Jump! With charge: ", self.currJumpCharge)
-                #print("Direction: ", self.jumpDirection)
+                self.jump_count += 1
 
                 self.currJumpCharge = 0
         else:
@@ -119,22 +122,37 @@ class Player:
         self.jumpDirection = abs(self.jumpDirection) * 0.75
         self.move_pos_to_hitbox()
 
-    def check_platform_reward(self, new_level):
-        if new_level == self.curr_platform_reward_level:
-            return
-        else:
-            # if self.curr_platform_reward_level > new_level and self.genome != None:
-            #     self.genome.fitness -= 5*(new_level - self.highscore_platform_reward_level)
+
+    # --- ai stuff here
+
+    def calculate_curr_reward(self, new_level, platform_id):
+        self.genome.fitness -= 0.001
+
+        # Kara za czas (motywuje do szybszego przechodzenia poziomów)
+        self.genome.fitness -= 0.001
+
+        if self.curr_platform_id != platform_id:
+            self.curr_platform_id = platform_id
+            print("standing on id:", platform_id)
+
+        if new_level > self.curr_platform_reward_level:
             self.curr_platform_reward_level = new_level
             if new_level > self.highscore_platform_reward_level:
-                # if self.genome != None:
-                #     self.genome.fitness += 10*(new_level - self.highscore_platform_reward_level)
                 self.highscore_platform_reward_level = new_level
-                print("Highscore! Platform: ", new_level)
+                # Większa nagroda za pobicie rekordu
+                self.genome.fitness += 100 * new_level
 
-    def calculate_total_reward(self, scaled_y_reward):
-        total_reward = self.curr_platform_reward_level + scaled_y_reward
-        if self.highscore_total_reward < total_reward:
-            self.highscore_total_reward = total_reward
-        if self.genome != None:
-            self.genome.fitness = self.highscore_total_reward
+    # def calculate_total_reward(self, scaled_y_reward):
+    #     total_reward = 10 + self.curr_platform_reward_level * 50 + scaled_y_reward * 5 + self.jump_count*0.5
+    #
+    #     if self.highscore_total_reward < total_reward:
+    #         self.highscore_total_reward = total_reward
+    #
+    #         print("Highscore!: ", total_reward)
+    #
+    #     if self.genome != None:
+    #         self.genome.fitness = self.highscore_total_reward
+
+    # def calculate_total_reward(self, scaled_y_reward):
+    #     if self.genome != None:
+    #         self.genome.fitness += scaled_y_reward * 5

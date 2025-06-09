@@ -6,21 +6,35 @@ from AIManager import AIManager
 def gameWindow():
     gameManager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
+    gen_timer = 0
+    generation_max_time = 10
     targetFrameRate = 1000
-    if selected_index == 0:
-        AIManager(gameManager)
+    speed_multiplication = 5
+
+    ai_mgr = AIManager(gameManager)
     # Main game loop
     running = True
-    while running:
-        # calculates delta time in seconds
-        dt = clock.tick(targetFrameRate) / 1000
 
+    if selected_index == 0:
+        ai_mgr.run_one_generation()
+
+    while running:
+        dt = (clock.tick(targetFrameRate) / 1000) * speed_multiplication
+        gen_timer += dt
+
+        # Event zamknięcia okna
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        # update logic
         gameManager.update(dt)
+
+        # Wywołanie nowej generacji graczy ai
+        if selected_index == 0 and gen_timer >= generation_max_time:
+            gen_timer = 0
+            gameManager.players.clear()
+            ai_mgr.run_one_generation()
+            gameManager.reset_transitions()
 
         # render frame
         screen.fill((0, 0, 0))

@@ -9,20 +9,26 @@ class ScreenTransitionManager:
         self.currScreenId = 0
 
     #checks if target is offscreen
-    def adjust_offscreen_pos(self, player, platforms):
+    def adjust_offscreen_pos(self, players, platforms):
         #player is obove current screen
-        if player.hitbox.bottom < 0:
-            self.move_all(player, platforms, 1)
+        if players[0].hitbox.bottom < 0:
+            self.move_all(players, platforms, 1)
             self.currScreenId += 1
 
-        elif player.hitbox.bottom > self.screen_height:
-            self.move_all(player, platforms, -1)
+        elif players[0].hitbox.bottom > self.screen_height:
+            self.move_all(players, platforms, -1)
             self.currScreenId -= 1
 
     #moves all objects relatively to screen transition
-    def move_all(self, player, platforms, offset_direction):
-        player.posY += self.screen_height * offset_direction
-        player.hitbox.top = int(player.posY)
+    def move_all(self, players, platforms, offset_direction):
+        for player in players:
+            player.posY += self.screen_height * offset_direction
+            player.hitbox.top = int(player.posY)
 
         for platform in platforms:
             platform.hitbox.top += self.screen_height * offset_direction
+
+    def reset(self,players,platforms):
+        for platform in platforms:
+            platform.reset_pos()
+        self.currScreenId = 0
