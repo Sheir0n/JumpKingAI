@@ -27,6 +27,10 @@ class PlayerAi:
     def add_jump_bonus(self):
         self.genome.fitness += 3 * (self.player.platform_highscore+1)
 
+    def fall_penalty(self):
+        self.genome.fitness *= 2/3
+
+
     # def calculate_total_reward(self, scaled_y_reward):
     #     total_reward = 10 + self.curr_platform_reward_level * 50 + scaled_y_reward * 5 + self.jump_count*0.5
     #

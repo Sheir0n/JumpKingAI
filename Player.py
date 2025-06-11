@@ -176,6 +176,9 @@ class Player:
 
     def check_new_platform(self, new_id, new_score):
         if new_id != self.curr_platform_id:
+            if self.curr_platform_score < new_score:
+                self.ai.fall_penalty()
+
             self.curr_platform_score = new_score
             if self.curr_platform_score > self.platform_highscore:
                 self.platform_highscore = self.curr_platform_score
