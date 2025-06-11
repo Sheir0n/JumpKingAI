@@ -2,10 +2,12 @@ from enum import Enum
 
 import pygame
 from InputController import PlayerInputController
-from InputController import NEATInputController
+from NEATInputController import NEATInputController
+from PlayerAi import PlayerAi
+
 
 class Player:
-    def __init__(self, posX, posY, player_controlled):
+    def __init__(self, posX, posY, player_controlled, player_id):
         self.WIDTH = 30
         self.HEIGHT = 50
 
@@ -13,12 +15,14 @@ class Player:
         self.posY = float(posY-self.HEIGHT)
 
         self.hitbox = pygame.Rect((self.posX, self.posY, self.WIDTH, self.HEIGHT))
+        self.id = player_id
+        self.player_controlled = player_controlled
 
         # how many units plyer should be able to move per second
         self.GROUNDSPEED = 275
         self.AIRSPEED = 500
 
-        self.inAir = False
+        self.in_air = False
         self.MAXJUMPCHARGE = 1200
         self.MINJUMPCHARGE = 10
         self.currJumpCharge = 0.0
@@ -29,36 +33,33 @@ class Player:
         self.TERMINALVELOCITY = -1500
         self.upAcceleration = 0.0
 
-        self.highscore_platform_reward_level = 0
-        self.curr_platform_reward_level = 0
-        self.highscore_total_reward = 0
-
         self.curr_platform_id = 0
+        self.curr_platform_score = 0
+        self.platform_highscore = 0
 
         self.was_jumping_last_frame = False
         self.jump_count = 0
+        self.time_since_last_jump = 0
 
-        # used only in AI mode
-        self.fitness = None
-        self.genome = None
-
-        if(player_controlled):
+        if self.player_controlled:
             self.controller = PlayerInputController()
+        else:
+            self.ai = None
+
 
     # used by AI Manager
-    def AIInputs(self, neat_network, get_observation, genome):
+    def create_player_ai(self, neat_network, get_observation, genome):
         self.controller = NEATInputController(neat_network, get_observation)
-        self.genome = genome
-        self.genome.fitness = 0
+        self.ai = PlayerAi(self, neat_network, get_observation, genome)
 
     # player movement controls
-    # later differentiate between ai and human
     def move(self, delta_time):
-        #key = pygame.key.get_pressed()
         state = self.controller.get_input()
+
         self.was_jumping_last_frame = state.get("jump", False)
 
-        if not self.inAir:
+        if not self.in_air:
+            self.time_since_last_jump += delta_time
             if not state["jump"] and self.currJumpCharge == 0:
                 if state["left"]:
                     self.posX -= self.GROUNDSPEED * delta_time
@@ -71,7 +72,7 @@ class Player:
                                               self.MAXJUMPCHARGE))
 
             elif self.currJumpCharge > 0:
-                self.inAir = True
+                self.in_air = True
                 self.upAcceleration = self.currJumpCharge
 
                 self.jumpDirection = 0
@@ -81,6 +82,10 @@ class Player:
                     self.jumpDirection += 1
 
                 self.jump_count += 1
+                self.time_since_last_jump = 0
+
+                if not self.player_controlled:
+                    self.ai.add_jump_bonus()
 
                 self.currJumpCharge = 0
         else:
@@ -103,7 +108,7 @@ class Player:
     def platform_top_collision(self,platform_top_position):
         self.hitbox.bottom = platform_top_position
         self.upAcceleration = 0
-        self.inAir = False
+        self.in_air = False
         self.jumpDirection = 0
         self.move_pos_to_hitbox()
 
@@ -122,37 +127,13 @@ class Player:
         self.jumpDirection = abs(self.jumpDirection) * 0.75
         self.move_pos_to_hitbox()
 
+    def check_new_platform(self, new_id, new_score):
+        if new_id != self.curr_platform_id:
+            self.curr_platform_score = new_score
+            if self.curr_platform_score > self.platform_highscore:
+                self.platform_highscore = self.curr_platform_score
+                print("id: ", self.id, " - new highscore! ", self.platform_highscore)
 
-    # --- ai stuff here
+                if not self.player_controlled:
+                    self.ai.add_platform_reward(new_score)
 
-    def calculate_curr_reward(self, new_level, platform_id):
-        self.genome.fitness -= 0.001
-
-        # Kara za czas (motywuje do szybszego przechodzenia poziomów)
-        self.genome.fitness -= 0.001
-
-        if self.curr_platform_id != platform_id:
-            self.curr_platform_id = platform_id
-            print("standing on id:", platform_id)
-
-        if new_level > self.curr_platform_reward_level:
-            self.curr_platform_reward_level = new_level
-            if new_level > self.highscore_platform_reward_level:
-                self.highscore_platform_reward_level = new_level
-                # Większa nagroda za pobicie rekordu
-                self.genome.fitness += 100 * new_level
-
-    # def calculate_total_reward(self, scaled_y_reward):
-    #     total_reward = 10 + self.curr_platform_reward_level * 50 + scaled_y_reward * 5 + self.jump_count*0.5
-    #
-    #     if self.highscore_total_reward < total_reward:
-    #         self.highscore_total_reward = total_reward
-    #
-    #         print("Highscore!: ", total_reward)
-    #
-    #     if self.genome != None:
-    #         self.genome.fitness = self.highscore_total_reward
-
-    # def calculate_total_reward(self, scaled_y_reward):
-    #     if self.genome != None:
-    #         self.genome.fitness += scaled_y_reward * 5

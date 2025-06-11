@@ -4,50 +4,48 @@ from pygame.math import clamp
 from Player import Player
 from Platform import Platform
 from ScreenTransitionManager import ScreenTransitionManager
+from AIManager import AIManager
 import os
 
-
-
-
 class GameManager:
-    def __init__(self, screen, isPlayerControlled):
+    def __init__(self, screen, is_player_controlled):
         #screen reference
         self.screen = screen
         self.players = []
-        self.isPlayerControlled = isPlayerControlled
+        self.isPlayerControlled = is_player_controlled
 
-        self.screenWidth = self.screen.get_width()
-        self.screenHeight = self.screen.get_height()
+        self.screen_width = self.screen.get_width()
+        self.screen_height = self.screen.get_height()
 
-        self.transition_manager = ScreenTransitionManager(self.screenHeight)
+        self.transition_manager = ScreenTransitionManager(self.screen_height)
+        self.ai_manager = AIManager(self)
 
-        if isPlayerControlled:
-            self.createPlayer()
+        if is_player_controlled:
+            self.create_player(0)
 
         self.platforms = []
-        self.generatePlatforms()
+        self.generate_platforms()
         self.maxScore = 11
         self.win = False
 
-    def createPlayer(self):
+    def create_player(self, id):
         #spawn player standing at position center
-        self.players.append(Player( self.screenWidth/2, self.screenHeight-128, self.isPlayerControlled))
+        self.players.append(Player(self.screen_width / 2, self.screen_height - 128, self.isPlayerControlled, id))
 
-    def generatePlatforms(self):
+    def generate_platforms(self):
         self.platforms.clear()
 
         file_path = os.path.join(os.path.dirname(__file__), "platformData.txt")
     
         try:
             with open(file_path, "r") as file:
-
                 platform_id = 0
                 for line in file:
                     parts = line.strip().split()
                     if len(parts) == 5:
                         x = int(parts[0])
                         # fixed y value so now larger numbers means higher in the level
-                        y = self.screenHeight - int(parts[1]) - int(parts[3])
+                        y = self.screen_height - int(parts[1]) - int(parts[3])
                         width = int(parts[2])
                         height = int(parts[3])
                         reward_level = int(parts[4])
@@ -61,61 +59,69 @@ class GameManager:
 
     #update function executes each frame
     def update(self, delta_time):
-        for p in self.players:
-            p.move(delta_time)
-            #p.calculate_total_reward(abs(p.posY-self.screenHeight)/self.screenHeight)
-            #print(p.highscore_total_reward)
+        for player in self.players:
+            player.move(delta_time)
+
+            if not self.isPlayerControlled:
+                player.ai.apply_fitness_decline(delta_time)
 
             #screen edge detection
-            if p.hitbox.left < 0:
-                p.hitbox.left = 0
-                p.move_pos_to_hitbox()
+            if player.hitbox.left < 0:
+                player.hitbox.left = 0
+                player.move_pos_to_hitbox()
 
-            if p.hitbox.right > self.screenWidth:
-                p.hitbox.right = self.screenWidth
-                p.move_pos_to_hitbox()
+            if player.hitbox.right > self.screen_width:
+                player.hitbox.right = self.screen_width
+                player.move_pos_to_hitbox()
 
             # Standing on platform detection flag
             on_platform = False
 
             # Detection when player walks off the platform
             for platform in self.platforms:
-
-                if self.player_over_platform_horizontally(platform, p) and platform.hitbox.top >= p.hitbox.bottom > platform.hitbox.top - 5:
+                if self.player_over_platform_horizontally(platform, player) and platform.hitbox.top >= player.hitbox.bottom > platform.hitbox.top - 5:
                     on_platform = True
-                    p.calculate_curr_reward(platform.reward_level, platform.id)
+
+                    #run player platform check function
+                    #in case of ai control also adds fitness points
+                    player.check_new_platform(platform.id, platform.reward_level)
+
                     if platform.reward_level == self.maxScore:
                         if self.isPlayerControlled:
-                            self.victoryWindow()
+                            self.victory_window()
                             self.win=True
                             return
                     break
 
             if not on_platform:
-                p.inAir = True
+                player.in_air = True
 
             # Jumping collision detection
             for platform in self.platforms:
 
-                if self.player_colliding(platform, p):
-                    top_overlap_distance = p.hitbox.bottom - platform.hitbox.top
-                    bot_overlap_distance = platform.hitbox.bottom - p.hitbox.top
-                    left_overlap_distance = p.hitbox.right - platform.hitbox.left
-                    right_overlap_distance = platform.hitbox.right - p.hitbox.left
+                if self.player_colliding(platform, player):
+                    top_overlap_distance = player.hitbox.bottom - platform.hitbox.top
+                    bot_overlap_distance = platform.hitbox.bottom - player.hitbox.top
+                    left_overlap_distance = player.hitbox.right - platform.hitbox.left
+                    right_overlap_distance = platform.hitbox.right - player.hitbox.left
 
                     min_overlap = min(top_overlap_distance, bot_overlap_distance, left_overlap_distance, right_overlap_distance)
 
                     if top_overlap_distance <= min_overlap:
-                        p.platform_top_collision(platform.hitbox.top)
+                        player.platform_top_collision(platform.hitbox.top)
 
                     elif bot_overlap_distance <= min_overlap:
-                        p.platform_bot_collision(platform.hitbox.bottom)
+                        player.platform_bot_collision(platform.hitbox.bottom)
 
                     elif left_overlap_distance <= min_overlap:
-                        p.platform_left_collision(platform.hitbox.left)
+                        player.platform_left_collision(platform.hitbox.left)
 
                     elif right_overlap_distance <= min_overlap:
-                        p.platform_right_collision(platform.hitbox.right)
+                        player.platform_right_collision(platform.hitbox.right)
+
+        #running ai generation check
+        if not self.isPlayerControlled:
+            self.ai_manager.create_new_generation_if_out_of_time(delta_time)
 
         # off screen offset adjustment
         self.transition_manager.adjust_offscreen_pos(self.players, self.platforms)
@@ -132,21 +138,19 @@ class GameManager:
         else:
             return False
 
-    def drawBoard(self):
+    def draw_board(self):
         for platform in self.platforms:
             pygame.draw.rect(self.screen, (0, 200, 100), platform.hitbox)
 
     def reset_transitions(self):
         self.transition_manager.reset(self.players,self.platforms)
 
-
-
     # player and object graphics
-    def updateDraw(self):
+    def update_draw(self):
         for p in self.players:
             pygame.draw.rect(self.screen, (250, 0, 0), p.hitbox)
 
-    def victoryWindow(self):
+    def victory_window(self):
         SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Victory Screen")
@@ -168,27 +172,3 @@ class GameManager:
                     running = False
 
             pygame.display.flip()
-
-    def build_observation(self, player):
-        #player = self.players[0]
-        curr_id = player.curr_platform_id
-
-        # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
-        next_platforms = self.platforms[curr_id:curr_id + 4]
-        if len(next_platforms) < 4 and next_platforms:
-            last = next_platforms[-1]
-            next_platforms.extend([last] * (4 - len(next_platforms)))
-
-        return [
-            # jumping
-            player.currJumpCharge / player.MAXJUMPCHARGE,
-            1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
-
-            clamp((player.posX - next_platforms[0].hitbox.right) / self.screenWidth, -1, 1),
-            clamp((player.posX - next_platforms[0].hitbox.left) / self.screenWidth, -1, 1),
-
-            clamp((player.posX - next_platforms[1].hitbox.right) / self.screenWidth, -1, 1),
-            clamp((player.posX - next_platforms[1].hitbox.left) / self.screenWidth, -1, 1),
-            clamp((player.posY - next_platforms[1].hitbox.top) / self.screenHeight, -1, 1),
-        ]
-        #return [player.posX/self.screenWidth, player.posY/self.screenWidth, nextPlatform.hitbox.centerx/self.screenWidth, nextPlatform.hitbox.centery/self.screenHeight, player.inAir, player.upAcceleration]

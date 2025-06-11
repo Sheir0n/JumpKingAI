@@ -1,49 +1,39 @@
 import pygame
 import sys
 from GameManager import GameManager
-from AIManager import AIManager
 
 def gameWindow():
-    gameManager = GameManager(screen, selected_index)
+    game_manager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
-    gen_timer = 0
-    generation_max_time = 10
     targetFrameRate = 1000
-    speed_multiplication = 5
-
-    ai_mgr = AIManager(gameManager)
+    speed_multiplication = 1
     # Main game loop
-    running = True
 
+
+    running = True
     if selected_index == 0:
-        ai_mgr.run_one_generation()
+        game_manager.ai_manager.run_one_generation()
 
     while running:
-        dt = (clock.tick(targetFrameRate) / 1000) * speed_multiplication
-        gen_timer += dt
+        if selected_index == 0:
+            dt = (clock.tick(targetFrameRate) / 1000) * speed_multiplication
+        else:
+            dt = clock.tick(targetFrameRate) / 1000
 
         # Event zamknięcia okna
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        gameManager.update(dt)
-
-        # Wywołanie nowej generacji graczy ai
-        if selected_index == 0 and gen_timer >= generation_max_time:
-            gen_timer = 0
-            gameManager.players.clear()
-            ai_mgr.run_one_generation()
-            gameManager.reset_transitions()
+        game_manager.update(dt)
 
         # render frame
         screen.fill((0, 0, 0))
-        gameManager.drawBoard()
-        
-        gameManager.updateDraw()
+        game_manager.draw_board()
+        game_manager.update_draw()
         pygame.display.update()
 
-        if gameManager.win:
+        if game_manager.win:
             running = False
 
     # Ending
