@@ -60,10 +60,11 @@ class GameManager:
     #update function executes each frame
     def update(self, delta_time):
         for player in self.players:
-            player.move(delta_time)
-
             if not self.isPlayerControlled:
+                player.move_ai(delta_time)
                 player.ai.apply_fitness_decline(delta_time)
+            else:
+                player.move_player(delta_time)
 
             #screen edge detection
             if player.hitbox.left < 0:

@@ -6,7 +6,7 @@ def gameWindow():
     game_manager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
     targetFrameRate = 1000
-    speed_multiplication = 1
+    speed_multiplication = 3
     # Main game loop
 
 

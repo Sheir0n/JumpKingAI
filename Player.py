@@ -53,7 +53,7 @@ class Player:
         self.ai = PlayerAi(self, neat_network, get_observation, genome)
 
     # player movement controls
-    def move(self, delta_time):
+    def move_player(self, delta_time):
         state = self.controller.get_input()
 
         self.was_jumping_last_frame = state.get("jump", False)
@@ -96,6 +96,53 @@ class Player:
             #print("Curr acceleration: ", self.upAcceleration)
 
         # update hitbox position
+        self.hitbox.topleft = (int(self.posX), int(self.posY))
+
+    def move_ai(self, delta_time):
+        state = self.controller.get_input()
+
+        self.was_jumping_last_frame = state.get("charge_jump", False)
+
+        if not self.in_air:
+            self.time_since_last_jump += delta_time
+
+            if not state.get("charge_jump", False) and self.currJumpCharge == 0:
+                if state.get("left", False):
+                    self.posX -= self.GROUNDSPEED * delta_time
+                if state.get("right", False):
+                    self.posX += self.GROUNDSPEED * delta_time
+
+            elif state.get("charge_jump", False):
+                self.currJumpCharge = max(
+                    self.MINJUMPCHARGE,
+                    min(self.currJumpCharge + self.jumpChargeRatePerSec * delta_time, self.MAXJUMPCHARGE)
+                )
+
+            elif self.currJumpCharge > 0 and state.get("release_jump", False):
+                self.in_air = True
+                self.upAcceleration = self.currJumpCharge
+
+                self.jumpDirection = 0
+                if state.get("left", False):
+                    self.jumpDirection -= 1
+                if state.get("right", False):
+                    self.jumpDirection += 1
+
+                self.jump_count += 1
+                self.time_since_last_jump = 0
+
+                if not self.player_controlled:
+                    self.ai.add_jump_bonus()
+
+                self.currJumpCharge = 0
+
+        else:
+            self.posY -= self.upAcceleration * delta_time
+            self.posX += self.AIRSPEED * self.jumpDirection * delta_time
+            self.upAcceleration = max(
+                self.TERMINALVELOCITY,
+                self.upAcceleration - self.GRAVITYRATEPERSEC * delta_time
+            )
         self.hitbox.topleft = (int(self.posX), int(self.posY))
 
     # move position of player float x and y postion to new hitbox position

@@ -49,62 +49,61 @@ class AIManager:
             last = next_platforms[-1]
             next_platforms.extend([last] * (2 - len(next_platforms)))
             #ver 1
-        # return [
-        #     # jumping
-        #     player.currJumpCharge / player.MAXJUMPCHARGE,
-        #     1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
-        #
-        #     clamp((player.posX - next_platforms[0].hitbox.centerx) / self.game_manager.screenWidth, -1, 1),
-        #     clamp((player.posX - next_platforms[0].hitbox.left) / self.game_manager.screenWidth, -1, 1),
-        #
-        #     clamp((player.posX - next_platforms[1].hitbox.right) / self.game_manager.screenWidth, -1, 1),
-        #     clamp((player.posX - next_platforms[1].hitbox.left) / self.game_manager.screenWidth, -1, 1),
-        #     clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screenHeight, -1, 1),
-        # ]
+        return [
+            # jumping
+            player.currJumpCharge / player.MAXJUMPCHARGE,
+            1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
+
+            clamp((player.posX - next_platforms[0].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
+            clamp((player.posX - next_platforms[0].hitbox.left) / self.game_manager.screen_width, -1, 1),
+
+            clamp((player.posX - next_platforms[1].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
+            next_platforms[1].hitbox.width / self.game_manager.screen_width,
+            clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screen_height, -1, 1),
+        ]
 
         #ver 2
         # def signed_distance(player_x, platform):
         #     dist_left = player_x - platform.hitbox.left
         #     dist_right = platform.hitbox.right - player_x
         #     if abs(dist_left) < abs(dist_right):
-        #         return clamp(-abs(dist_left) / self.game_manager.screenWidth, -1, 1)
+        #         return clamp(-abs(dist_left) / self.game_manager.screen_width, -1, 1)
         #     else:
-        #         return clamp(abs(dist_right) / self.game_manager.screenWidth, -1, 1)
-
+        #         return clamp(abs(dist_right) / self.game_manager.screen_width, -1, 1)
+        #
         # return [
         #     # jumping
         #     player.currJumpCharge / player.MAXJUMPCHARGE,
-        #     1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
+        #     #1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
         #
         #     signed_distance(player.posX, next_platforms[0]),
         #     signed_distance(player.posX, next_platforms[1]),
-        #     clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screenHeight, -1, 1),
+        #     clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screen_height, -1, 1),
         # ]
-        #return [player.posX/self.screenWidth, player.posY/self.screenWidth, nextPlatform.hitbox.centerx/self.screenWidth, nextPlatform.hitbox.centery/self.screenHeight, player.inAir, player.upAcceleration]
 
         # ver 3
-        return [
-            # curr % jump charge
-            player.currJumpCharge / player.MAXJUMPCHARGE,
-            # is player in air
-            0.0 if player.in_air else 1.0,
-
-            #noramlizowana pozycja
-            player.posX / self.game_manager.screen_width,
-            (self.game_manager.screen_height - player.posY) / self.game_manager.screen_height,
-
-            #pozcja na platformie na której stoi
-            clamp((player.posX - next_platforms[0].hitbox.centerx) / next_platforms[0].hitbox.width, -1, 1),
-            #szerokość
-            next_platforms[0].hitbox.width / self.game_manager.screen_width,
-
-            #następna platforma
-            (next_platforms[1].hitbox.centerx - player.posX) / self.game_manager.screen_width,
-            ((self.game_manager.screen_height - next_platforms[1].hitbox.top) - (self.game_manager.screen_height - player.posY)) / self.game_manager.screen_height,
-
-            next_platforms[1].hitbox.width / self.game_manager.screen_width,
-            next_platforms[1].hitbox.centerx / self.game_manager.screen_width
-        ]
+        # return [
+        #     # curr % jump charge
+        #     player.currJumpCharge / player.MAXJUMPCHARGE,
+        #     # is player in air
+        #     0.0 if player.in_air else 1.0,
+        #
+        #     #noramlizowana pozycja
+        #     player.posX / self.game_manager.screen_width,
+        #     (self.game_manager.screen_height - player.posY) / self.game_manager.screen_height,
+        #
+        #     #pozcja na platformie na której stoi
+        #     clamp((player.posX - next_platforms[0].hitbox.centerx) / next_platforms[0].hitbox.width, -1, 1),
+        #     #szerokość
+        #     next_platforms[0].hitbox.width / self.game_manager.screen_width,
+        #
+        #     #następna platforma
+        #     (next_platforms[1].hitbox.centerx - player.posX) / self.game_manager.screen_width,
+        #     ((self.game_manager.screen_height - next_platforms[1].hitbox.top) - (self.game_manager.screen_height - player.posY)) / self.game_manager.screen_height,
+        #
+        #     next_platforms[1].hitbox.width / self.game_manager.screen_width,
+        #     next_platforms[1].hitbox.centerx / self.game_manager.screen_width
+        # ]
 
     def create_new_generation_if_out_of_time(self, dt):
         self.gen_timer += dt
