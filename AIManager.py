@@ -19,6 +19,9 @@ class AIManager:
 
         self.stop_running = False
 
+        #TODO: PRZEROBIĆ TO ABY DZIAŁAŁO NA DELTA TIME
+        #player.ai.distance_to_next_platform_bonus(self.game_manager.platforms, self.game_manager.screen_width, self.game_manager.screen_height)
+
     def run_one_generation(self):
         self.gen += 1
         print(f"Generacja {self.gen}")
@@ -44,23 +47,24 @@ class AIManager:
     def build_observation(self, player):
         curr_id = player.curr_platform_id
         # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
+
         next_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
         if len(next_platforms) < 2 and next_platforms:
             last = next_platforms[-1]
             next_platforms.extend([last] * (2 - len(next_platforms)))
             #ver 1
-        return [
-            # jumping
-            player.currJumpCharge / player.MAXJUMPCHARGE,
-            1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
-
-            clamp((player.posX - next_platforms[0].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
-            clamp((player.posX - next_platforms[0].hitbox.left) / self.game_manager.screen_width, -1, 1),
-
-            clamp((player.posX - next_platforms[1].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
-            next_platforms[1].hitbox.width / self.game_manager.screen_width,
-            clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screen_height, -1, 1),
-        ]
+        # return [
+        #     # jumping
+        #     player.currJumpCharge / player.MAXJUMPCHARGE,
+        #     1.0 if player.currJumpCharge >= player.MAXJUMPCHARGE else 0.0,
+        #
+        #     clamp((player.posX - next_platforms[0].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
+        #     clamp((player.posX - next_platforms[0].hitbox.left) / self.game_manager.screen_width, -1, 1),
+        #
+        #     clamp((player.posX - next_platforms[1].hitbox.centerx) / self.game_manager.screen_width, -1, 1),
+        #     next_platforms[1].hitbox.width / self.game_manager.screen_width,
+        #     clamp((player.posY - next_platforms[1].hitbox.top) / self.game_manager.screen_height, -1, 1),
+        # ]
 
         #ver 2
         # def signed_distance(player_x, platform):
@@ -105,6 +109,31 @@ class AIManager:
         #     next_platforms[1].hitbox.centerx / self.game_manager.screen_width
         # ]
 
+        #ver 4
+        return [
+            #wartości do skoku
+            player.currJumpCharge / player.MAXJUMPCHARGE,
+            0.0 if player.in_air else 1.0,
+
+            #odległośc do środka platformy na której stoi (normalizowana do szerokości ekranu)
+            clamp((player.posX - next_platforms[0].hitbox.centerx) / next_platforms[1].hitbox.width, -1, 1),
+            #rozmiar platformy (normalizowany do szerokości)
+            clamp(next_platforms[0].hitbox.width / self.game_manager.screen_width, 0,1),
+
+            #odl x od gracza (normalizowana) do najbliższej krawedzi bocznej następnej platformy
+            min(
+                abs(clamp((player.posX - next_platforms[1].hitbox.right) / self.game_manager.screen_width, -1, 1)),
+                abs(clamp((player.posX - next_platforms[1].hitbox.left) / self.game_manager.screen_width, -1, 1))
+            ),
+
+            #różnica wysokości do next platformy (normalizowana)
+            clamp((player.posY - next_platforms[0].hitbox.top) / self.game_manager.screen_height,-1,1),
+
+            #kierunek do następnej platformy
+            -1.0 if abs(player.posX - next_platforms[1].hitbox.right) >= abs(player.posX - next_platforms[1].hitbox.left) else 1.0,
+        ]
+
+
     def create_new_generation_if_out_of_time(self, dt):
         self.gen_timer += dt
         if self.gen_timer >= self.max_gen_time:
@@ -117,6 +146,10 @@ class AIManager:
         for player in self.game_manager.players:
             if player.jump_count == 0:
                 player.ai.no_jump_penalty()
+            else:
+                player.ai.distance_to_next_platform_bonus(self.game_manager.platforms, self.game_manager.screen_width,
+                                                          self.game_manager.screen_height)
+
         self.collect_and_display_gen_stats()
         self.game_manager.players.clear()
 

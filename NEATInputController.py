@@ -18,10 +18,10 @@ class NEATInputController(InputController):
 
     def get_input(self):
         inputs = self.obs_fn()                 # pobieramy aktualny stan gry
-        directional, charge_jump, release_jump= self.net.activate(inputs)
+        directional, charge_jump= self.net.activate(inputs)
         return {
             "left": directional < 0.5,
             "right": directional > 0.5,
             "charge_jump": charge_jump > 0.5,
-            "release_jump": release_jump > 0.5
+            "release_jump":  charge_jump < 0.5
         }
