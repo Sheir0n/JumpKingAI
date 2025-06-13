@@ -40,29 +40,52 @@ class GameManager:
 
         file_path = os.path.join(os.path.dirname(__file__), "platformData1.txt")
 
-        #if self.curr_platform_rotation % 2 == 0:
-            #file_path = os.path.join(os.path.dirname(__file__), "platformData1.txt")
-        #else:
-        #    file_path = os.path.join(os.path.dirname(__file__), "platformData2.txt")
+        if self.curr_platform_rotation % 2 == 1:
+            try:
+                with open(file_path, "r") as file:
+                    platform_id = 0
+                    for line in file:
+                        parts = line.strip().split()
+                        if len(parts) == 5:
+                            x = int(parts[0])
+                            # fixed y value so now larger numbers means higher in the level
+                            y = self.screen_height - int(parts[1]) - int(parts[3])
+                            width = int(parts[2])
+                            height = int(parts[3])
+                            reward_level = int(parts[4])
+                            platform = Platform(x, y, width, height, reward_level, platform_id)
+                            platform_id += 1
+                            self.platforms.append(platform)
+            except FileNotFoundError:
+                print("platformData1.txt not found.")
+            self.platforms.sort(key=lambda p: p.reward_level)
+        else:
+            try:
+                with open(file_path, "r") as file:
+                    platform_id = 0
+                    for line in file:
+                        parts = line.strip().split()
+                        if len(parts) == 5:
+                            original_x = int(parts[0])
+                            y_from_bottom = int(parts[1])
+                            width = int(parts[2])
+                            height = int(parts[3])
+                            reward_level = int(parts[4])
 
-        try:
-            with open(file_path, "r") as file:
-                platform_id = 0
-                for line in file:
-                    parts = line.strip().split()
-                    if len(parts) == 5:
-                        x = int(parts[0])
-                        # fixed y value so now larger numbers means higher in the level
-                        y = self.screen_height - int(parts[1]) - int(parts[3])
-                        width = int(parts[2])
-                        height = int(parts[3])
-                        reward_level = int(parts[4])
-                        platform = Platform(x, y, width, height, reward_level, platform_id)
-                        platform_id += 1
-                        self.platforms.append(platform)
-        except FileNotFoundError:
-            print("platformData1.txt not found.")
-        self.platforms.sort(key=lambda p: p.reward_level)
+                            # Lustro w osi X
+                            x = self.screen_width - (original_x + width)
+
+                            # Odwrócenie osi Y tak jak wcześniej
+                            y = self.screen_height - y_from_bottom - height
+
+                            platform = Platform(x, y, width, height, reward_level, platform_id)
+                            platform_id += 1
+                            self.platforms.append(platform)
+            except FileNotFoundError:
+                print("platformData1.txt not found.")
+
+            self.platforms.sort(key=lambda p: p.reward_level)
+
 
 
     #update function executes each frame
@@ -72,6 +95,8 @@ class GameManager:
                 player.move_ai(delta_time)
             else:
                 player.move_player(delta_time)
+
+            player.update_record_height(self.screen_height)
 
             #screen edge detection
             if player.hitbox.left < 0:
@@ -89,7 +114,6 @@ class GameManager:
                     on_platform = True
 
                     #run player platform check function
-                    #in case of ai control also adds fitness points
                     player.check_new_platform(platform.id, platform.reward_level)
 
                     if platform.reward_level == self.maxScore:

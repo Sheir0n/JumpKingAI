@@ -17,11 +17,21 @@ class NEATInputController(InputController):
         self._jump_buffer = 0   # licznik „przytrzymania”
 
     def get_input(self):
-        inputs = self.obs_fn()                 # pobieramy aktualny stan gry
-        directional, jump_trigger, jump_strength = self.net.activate(inputs)
+        inputs = self.obs_fn()
+        direction, jump_direction, jump_trigger, jump_strength = self.net.activate(inputs)
         return {
-            "left": directional < 0.5,
-            "right": directional > 0.5,
+            "left": direction > 0,
+            "right": direction <= 0,
+            "left_jump": jump_direction > 0,
+            "right_jump": jump_direction <= 0,
             "jump_trigger": jump_trigger > 0.5,
             "jump_strength":  (jump_strength + 1) / 2
+        }
+
+    def get_empty_input(self):
+        return {
+            "left": False,
+            "right": False,
+            "jump_trigger": False,
+            "jump_strength": 0
         }

@@ -17,7 +17,7 @@ class AIManager:
         self.population = neat.Population(config)
         self.gen = 0
         self.gen_timer = 0
-        self.max_gen_time = 20 #s
+        self.max_gen_time = 15 #s
 
         self.stop_running = False
 
@@ -26,6 +26,7 @@ class AIManager:
 
     def run_one_generation(self):
         self.gen += 1
+        self.game_manager.generate_platforms()
         print(f"Generacja {self.gen}")
         self.population.run(self.run_player, 1)
 
@@ -50,10 +51,10 @@ class AIManager:
         curr_id = player.curr_platform_id
         # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
 
-        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
-        if len(seen_platforms) < 2 and seen_platforms:
+        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 3]
+        if len(seen_platforms) < 3 and seen_platforms:
             last = seen_platforms[-1]
-            seen_platforms.extend([last] * (2 - len(seen_platforms)))
+            seen_platforms.extend([last] * (3 - len(seen_platforms)))
 
             #ver 1
         # return [
@@ -137,40 +138,55 @@ class AIManager:
         # ]
 
     #ver 5 (maxsafedist and directional info) WERSJA DO NOWEGO SYSTEMU SKAKANIA
+        # return [
+        #     #Aktualny charge skoku
+        #     player.currJumpCharge / player.MAXJUMPCHARGE,
+        #
+        #     # Znormalizowana pozycja x na ekranie
+        #     player.hitbox.centerx / self.game_manager.screen_width,
+        #
+        #     #Znormalizowana odleglosc od srodka aktualnej platformy
+        #     (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (seen_platforms[0].hitbox.width / 2),
+        #
+        #     self.nearest_platform_distance(seen_platforms[1], player),
+        #     #kąt do kolejnej platformy
+        #     self.nearest_platform_angle(player,seen_platforms[1]),
+        #
+        #     self.nearest_platform_distance(seen_platforms[2], player),
+        #     # kąt do kolejnej platformy
+        #     self.nearest_platform_angle(player, seen_platforms[2]),
+        # ]
+
+    #ver 5b
         return [
-            #Czy jest w locie
-            player.in_air,
-
-            #Velocity w locie
-            player.upAcceleration / player.TERMINALVELOCITY,
-
-            #AKtualny charge skoku
             player.currJumpCharge / player.MAXJUMPCHARGE,
+            player.hitbox.centerx / self.game_manager.screen_width,
+            player.hitbox.centery / self.game_manager.screen_height,
 
-            #dystans ostatniego skoku
-            player.prev_jump_dist_difference / sqrt(self.game_manager.screen_width**2 + self.game_manager.screen_height**2),
+            player.ai.previous_jump_dir / 1.0,
 
-            # Znormalizowana odległość od lewej krawędzi ekranu
-            player.hitbox.left / self.game_manager.screen_width,
+            # Pozycja względem centrum platformy (ograniczona)
+            max(-1.0, min(1.0,
+                          (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (seen_platforms[0].hitbox.width / 2)
+                          )),
 
-            # Znormalizowana odległość od prawej krawędzi ekranu
-            (self.game_manager.screen_width - player.hitbox.right) / self.game_manager.screen_width,
+            self.nearest_platform_distance(seen_platforms[1], player),
+            self.nearest_platform_angle(player, seen_platforms[1]),
 
-            #normalizowana odleglosc od srodka ekranu
-            player.hitbox.centerx / self.game_manager.screen_width / self.game_manager.screen_width,
+            self.nearest_platform_distance(seen_platforms[2], player),
+            self.nearest_platform_angle(player, seen_platforms[2]),
 
-            #Znormalizowana odleglosc od srodka aktualnej platformy
-            (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (seen_platforms[0].hitbox.width / 2),
+            seen_platforms[1].hitbox.width / self.game_manager.screen_width,
+            seen_platforms[2].hitbox.width / self.game_manager.screen_width,
 
-            # Odleglosc do kolejnej platformy w x
-            (seen_platforms[1].hitbox.centerx - player.hitbox.centerx) / self.game_manager.screen_width,
-
-            # Odleglosc do kolejnej platformy w y
-            (player.hitbox.bottom - seen_platforms[1].hitbox.top)/ self.game_manager.screen_height,
-
-            #kąt do kolejnej platformy
-            self.nearest_platform_angle(player,seen_platforms[1])
+            1.0 if player.hitbox.left < 0.05 * self.game_manager.screen_width else 0.0,
+            1.0 if player.hitbox.right > 0.95 * self.game_manager.screen_width else 0.0
         ]
+    def nearest_platform_distance(self, platform, player):
+        x_dist = min(abs(platform.hitbox.left - player.hitbox.right), abs(platform.hitbox.right - player.hitbox.left)) / self.game_manager.screen_width
+        y_dist = abs((player.hitbox.bottom - platform.hitbox.top) / self.game_manager.screen_height)
+
+        return sqrt(pow(x_dist,2) + pow(y_dist,2))
 
     def nearest_platform_angle(self, player, next_platform):
         px = player.hitbox.centerx
@@ -190,7 +206,7 @@ class AIManager:
 
     def create_new_generation_if_out_of_time(self, dt):
         self.gen_timer += dt
-        if self.gen_timer >= self.max_gen_time + self.gen:
+        if self.gen_timer >= self.max_gen_time:
             self.gen_timer = 0
             self.end_generation_calculations()
             self.game_manager.reset_transitions()
@@ -199,11 +215,7 @@ class AIManager:
 
     def end_generation_calculations(self):
         for player in self.game_manager.players:
-            if player.jump_count == 0:
-                player.ai.no_jump_penalty()
-            else:
-                player.ai.distance_to_next_platform_bonus(self.game_manager.platforms, self.game_manager.screen_width,
-                                                          self.game_manager.screen_height)
+            player.ai.height_record_reward()
 
         self.collect_and_display_gen_stats()
         self.game_manager.players.clear()

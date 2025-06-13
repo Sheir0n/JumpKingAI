@@ -5,29 +5,39 @@ from GameManager import GameManager
 def gameWindow():
     game_manager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
-    targetFrameRate = 1000
-    speed_multiplication = 2
-    # Main game loop
-
+    targetFrameRate = 500
+    speed_multiplication = 3
 
     running = True
     if selected_index == 0:
         game_manager.ai_manager.run_one_generation()
 
-    while running:
-        if selected_index == 0:
-            dt = (clock.tick(targetFrameRate) / 1000) * speed_multiplication
-        else:
-            dt = clock.tick(targetFrameRate) / 1000
+    # Akumulator i krok fizyczny
+    accumulator = 0.0
+    physics_step = 0.01 * speed_multiplication
+    max_dt = 0.05  # ograniczenie przy dużych lagach
 
-        # Event zamknięcia okna
+    while running:
+        # Pobierz czas od ostatniej klatki
+        raw_dt = clock.tick(targetFrameRate) / 1000.0
+        if selected_index == 0:
+            raw_dt *= speed_multiplication
+
+        # Ograniczenie zbyt dużego przeskoku czasu
+        dt = min(raw_dt, max_dt)
+        accumulator += dt
+
+        # Obsługa zdarzeń (zamykanie gry)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        game_manager.update(dt)
+        # Kilkukrotne wywołanie update, jeśli potrzeba
+        while accumulator >= physics_step:
+            game_manager.update(physics_step)
+            accumulator -= physics_step
 
-        # render frame
+        # Rysowanie raz na pętlę (możesz też renderować interpolując)
         screen.fill((0, 0, 0))
         game_manager.draw_board()
         game_manager.update_draw()
@@ -36,7 +46,6 @@ def gameWindow():
         if game_manager.win:
             running = False
 
-    # Ending
     pygame.quit()
     sys.exit()
 

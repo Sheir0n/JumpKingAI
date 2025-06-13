@@ -24,10 +24,10 @@ class Player:
         self.AIRSPEED = 600
 
         self.in_air = False
-        self.MAXJUMPCHARGE = 1150
+        self.MAXJUMPCHARGE = 1200
         self.MINJUMPCHARGE = 10
         self.currJumpCharge = 0.0
-        self.jumpChargeRatePerSec = 862.5
+        self.jumpChargeRatePerSec = 1200
         self.jumpDirection = 0
 
         self.GRAVITYRATEPERSEC = 2600
@@ -39,13 +39,9 @@ class Player:
         self.platform_highscore = 0
 
         self.jump_count = 0
-        self.time_since_last_jump = 0
+        self.record_height = 0
 
-        self.check_ai_jump_stack = 0
-        self.prev_jump_strength = 0
-        self.jump_start_posx = 0
-        self.jump_start_posy = 0
-        self.prev_jump_dist_difference = 0
+        self.jump_begin_height = 0
 
         if self.player_controlled:
             self.controller = PlayerInputController()
@@ -60,11 +56,9 @@ class Player:
 
     # player movement controls
     def move_player(self, delta_time):
-
         state = self.controller.get_input()
 
         if not self.in_air:
-            self.time_since_last_jump += delta_time
             if not state["jump"] and self.currJumpCharge == 0:
                 if state["left"]:
                     self.posX -= self.GROUNDSPEED * delta_time
@@ -80,10 +74,6 @@ class Player:
                 self.in_air = True
                 self.upAcceleration = self.currJumpCharge
 
-                self.jump_start_posx = self.hitbox.centerx
-                self.jump_start_posy = self.hitbox.bottom
-                self.prev_jump_strength = self.currJumpCharge
-
                 self.jumpDirection = 0
                 if state["left"]:
                     self.jumpDirection -= 1
@@ -91,7 +81,6 @@ class Player:
                     self.jumpDirection += 1
 
                 self.jump_count += 1
-                self.time_since_last_jump = 0
 
                 if not self.player_controlled:
                     self.ai.add_jump_bonus()
@@ -108,40 +97,41 @@ class Player:
         self.hitbox.topleft = (int(self.posX), int(self.posY))
 
     def move_ai(self, delta_time):
-        self.ai.apply_stuck_fitness_decline(delta_time)
-        self.ai.no_side_movement_penalty(delta_time)
+        if self.jump_count < self.ai.max_moves:
+            state = self.controller.get_input()
+        else:
+            state = self.controller.get_empty_input()
 
-        state = self.controller.get_input()
-
-        # Ruch w poziomie tylko gdy gracz jest na ziemi
         if not self.in_air:
-            self.time_since_last_jump += delta_time
             if not state.get("jump_trigger"):
                 if state["left"]:
                     self.posX -= self.GROUNDSPEED * delta_time
                 if state["right"]:
                     self.posX += self.GROUNDSPEED * delta_time
 
-            # Jeśli AI chce skakać
+            # Ładowanie skoku i inicjacja
             if state.get("jump_trigger"):
-                # Ładownie skoku
-                self.currJumpCharge = max(self.MINJUMPCHARGE,
-                                          min(self.currJumpCharge + self.jumpChargeRatePerSec * delta_time,
-                                              self.MAXJUMPCHARGE))
-                # Inicjacja skoku
-                if self.currJumpCharge >= state.get("jump_strength", 0.0) * self.MAXJUMPCHARGE:
-                    self.jump_start_posx = self.hitbox.centerx
-                    self.jump_start_posy = self.hitbox.bottom
-                    self.prev_jump_strength = self.currJumpCharge
+                target_charge = max(self.MINJUMPCHARGE, min(state.get("jump_strength", 0.0), 1.0) * self.MAXJUMPCHARGE)
+                new_charge = self.currJumpCharge + self.jumpChargeRatePerSec * delta_time
+                if new_charge < target_charge:
+                    self.currJumpCharge = new_charge
+                else:
+                    # Zabezpieczenie przed przekroczeniem
+                    self.currJumpCharge = target_charge
+
+                    # Wykonaj skok dokładnie z target_charge
                     self.in_air = True
-                    self.upAcceleration = max(self.MINJUMPCHARGE, state.get("jump_strength", 0.0) * self.MAXJUMPCHARGE)
+                    self.jump_begin_height = self.hitbox.bottom
+                    self.upAcceleration = target_charge
+                    print("jump charge: ", self.currJumpCharge)
                     self.currJumpCharge = 0
 
                     # Kierunek skoku
-                    self.jumpDirection = -1 if state["left"] else 1 if state["right"] else 0
+                    self.jumpDirection = -1 if state["left_jump"] else 1 if state["right_jump"] else 0
+                    self.ai.reward_jump_direction_change(self.jumpDirection)
+
 
                     self.jump_count += 1
-                    self.time_since_last_jump = 0
 
         else:
             # Faza lotu
@@ -164,17 +154,16 @@ class Player:
         self.hitbox.bottom = platform_top_position
         self.upAcceleration = 0
         self.in_air = False
-        self.check_ai_jump_stack = 1
         self.jumpDirection = 0
         self.move_pos_to_hitbox()
-        self.calculate_jump_distance()
 
-    def calculate_jump_distance(self):
-        dx = self.hitbox.centerx - self.jump_start_posx
-        dy = self.hitbox.bottom - self.jump_start_posy
-        self.prev_jump_dist_difference = sqrt(dx ** 2 + dy ** 2)
-        if not self.player_controlled:
-            self.ai.jump_distance_penalty(self.prev_jump_dist_difference)
+        if self.hitbox.bottom < self.jump_begin_height:
+            self.ai.jump_bonus()
+            #print("bonus")
+        elif self.hitbox.bottom > self.jump_begin_height:
+            self.ai.jump_penalty()
+        else:
+            self.ai.same_height_jump()
 
     def platform_bot_collision(self,platform_bot_position):
         self.hitbox.top = platform_bot_position
@@ -183,41 +172,40 @@ class Player:
 
     def platform_left_collision(self,platform_left_position):
         self.hitbox.right = platform_left_position
-        self.jumpDirection = abs(self.jumpDirection) * -0.75
+        self.jumpDirection = abs(self.jumpDirection) * -0.5
+        if self.upAcceleration > 0:
+            self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        if not self.player_controlled:
-            self.ai.hitbox_edge_push_penalty()
 
     def platform_right_collision(self, platform_right_position):
         self.hitbox.left = platform_right_position
-        self.jumpDirection = abs(self.jumpDirection) * 0.75
+        self.jumpDirection = abs(self.jumpDirection) * 0.5
+        if self.upAcceleration > 0:
+            self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        if not self.player_controlled:
-            self.ai.hitbox_edge_push_penalty()
 
     def screen_left_edge_collision(self):
         self.hitbox.left = 0
+        self.jumpDirection = abs(self.jumpDirection) * 0.05
+        if self.upAcceleration > 0:
+            self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        self.jumpDirection = abs(self.jumpDirection) * 0.25
-        if not self.player_controlled:
-            self.ai.hitbox_edge_push_penalty()
+        self.ai.screen_edge_bounce()
 
     def screen_right_edge_collision(self, screen_width):
         self.hitbox.right = screen_width
+        self.jumpDirection = abs(self.jumpDirection) * -0.05
+        if self.upAcceleration > 0:
+            self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        self.jumpDirection = abs(self.jumpDirection) * -0.25
-        if not self.player_controlled:
-            self.ai.hitbox_edge_push_penalty()
+        self.ai.screen_edge_bounce()
 
     def check_new_platform(self, new_id, new_score):
         if new_id != self.curr_platform_id and not self.player_controlled:
-            if self.curr_platform_score > new_score:
+            if self.curr_platform_score >= new_score:
                 self.ai.fall_penalty()
             elif self.curr_platform_score < new_score:
                 self.ai.apply_on_higher_platform_reward(new_score)
-            elif self.check_ai_jump_stack and self.curr_platform_score == new_score:
-                self.check_ai_jump_stack = 0
-                self.ai.jump_on_same_platform_penalty(self.prev_jump_strength / self.MAXJUMPCHARGE)
 
             self.curr_platform_score = new_score
 
@@ -228,3 +216,7 @@ class Player:
                 if not self.player_controlled:
                     self.ai.apply_highscore_reward(new_score)
 
+    def update_record_height(self,screen_height):
+        new_height = screen_height - self.hitbox.bottom
+        if new_height > self.record_height:
+            self.record_height = new_height
