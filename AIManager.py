@@ -1,3 +1,5 @@
+from math import sqrt, atan2, pi
+
 import neat
 import neat.population
 from pygame.math import clamp
@@ -15,7 +17,7 @@ class AIManager:
         self.population = neat.Population(config)
         self.gen = 0
         self.gen_timer = 0
-        self.max_gen_time = 10 #s
+        self.max_gen_time = 20 #s
 
         self.stop_running = False
 
@@ -48,10 +50,11 @@ class AIManager:
         curr_id = player.curr_platform_id
         # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
 
-        next_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
-        if len(next_platforms) < 2 and next_platforms:
-            last = next_platforms[-1]
-            next_platforms.extend([last] * (2 - len(next_platforms)))
+        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
+        if len(seen_platforms) < 2 and seen_platforms:
+            last = seen_platforms[-1]
+            seen_platforms.extend([last] * (2 - len(seen_platforms)))
+
             #ver 1
         # return [
         #     # jumping
@@ -110,36 +113,88 @@ class AIManager:
         # ]
 
         #ver 4
+        # return [
+        #     #wartości do skoku
+        #     player.currJumpCharge / player.MAXJUMPCHARGE,
+        #     0.0 if player.in_air else 1.0,
+        #
+        #     #odległośc do środka platformy na której stoi (normalizowana do szerokości ekranu)
+        #     clamp((player.posX - next_platforms[0].hitbox.centerx) / next_platforms[1].hitbox.width, -1, 1),
+        #     #rozmiar platformy (normalizowany do szerokości)
+        #     clamp(next_platforms[0].hitbox.width / self.game_manager.screen_width, 0,1),
+        #
+        #     #odl x od gracza (normalizowana) do najbliższej krawedzi bocznej następnej platformy
+        #     min(
+        #         abs(clamp((player.posX - next_platforms[1].hitbox.right) / self.game_manager.screen_width, -1, 1)),
+        #         abs(clamp((player.posX - next_platforms[1].hitbox.left) / self.game_manager.screen_width, -1, 1))
+        #     ),
+        #
+        #     #różnica wysokości do next platformy (normalizowana)
+        #     clamp((player.posY - next_platforms[0].hitbox.top) / self.game_manager.screen_height,-1,1),
+        #
+        #     #kierunek do następnej platformy
+        #     -1.0 if abs(player.posX - next_platforms[1].hitbox.right) >= abs(player.posX - next_platforms[1].hitbox.left) else 1.0,
+        # ]
+
+    #ver 5 (maxsafedist and directional info) WERSJA DO NOWEGO SYSTEMU SKAKANIA
         return [
-            #wartości do skoku
+            #Czy jest w locie
+            player.in_air,
+
+            #Velocity w locie
+            player.upAcceleration / player.TERMINALVELOCITY,
+
+            #AKtualny charge skoku
             player.currJumpCharge / player.MAXJUMPCHARGE,
-            0.0 if player.in_air else 1.0,
 
-            #odległośc do środka platformy na której stoi (normalizowana do szerokości ekranu)
-            clamp((player.posX - next_platforms[0].hitbox.centerx) / next_platforms[1].hitbox.width, -1, 1),
-            #rozmiar platformy (normalizowany do szerokości)
-            clamp(next_platforms[0].hitbox.width / self.game_manager.screen_width, 0,1),
+            #dystans ostatniego skoku
+            player.prev_jump_dist_difference / sqrt(self.game_manager.screen_width**2 + self.game_manager.screen_height**2),
 
-            #odl x od gracza (normalizowana) do najbliższej krawedzi bocznej następnej platformy
-            min(
-                abs(clamp((player.posX - next_platforms[1].hitbox.right) / self.game_manager.screen_width, -1, 1)),
-                abs(clamp((player.posX - next_platforms[1].hitbox.left) / self.game_manager.screen_width, -1, 1))
-            ),
+            # Znormalizowana odległość od lewej krawędzi ekranu
+            player.hitbox.left / self.game_manager.screen_width,
 
-            #różnica wysokości do next platformy (normalizowana)
-            clamp((player.posY - next_platforms[0].hitbox.top) / self.game_manager.screen_height,-1,1),
+            # Znormalizowana odległość od prawej krawędzi ekranu
+            (self.game_manager.screen_width - player.hitbox.right) / self.game_manager.screen_width,
 
-            #kierunek do następnej platformy
-            -1.0 if abs(player.posX - next_platforms[1].hitbox.right) >= abs(player.posX - next_platforms[1].hitbox.left) else 1.0,
+            #normalizowana odleglosc od srodka ekranu
+            player.hitbox.centerx / self.game_manager.screen_width / self.game_manager.screen_width,
+
+            #Znormalizowana odleglosc od srodka aktualnej platformy
+            (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (seen_platforms[0].hitbox.width / 2),
+
+            # Odleglosc do kolejnej platformy w x
+            (seen_platforms[1].hitbox.centerx - player.hitbox.centerx) / self.game_manager.screen_width,
+
+            # Odleglosc do kolejnej platformy w y
+            (player.hitbox.bottom - seen_platforms[1].hitbox.top)/ self.game_manager.screen_height,
+
+            #kąt do kolejnej platformy
+            self.nearest_platform_angle(player,seen_platforms[1])
         ]
 
+    def nearest_platform_angle(self, player, next_platform):
+        px = player.hitbox.centerx
+        py = player.hitbox.bottom
+
+        # Rogi platformy
+        left_x = next_platform.hitbox.left
+        right_x = next_platform.hitbox.right
+        top_y = next_platform.hitbox.top
+
+        # Wybierz bliższy róg w poziomie
+        target_x = left_x if abs(left_x - px) < abs(right_x - px) else right_x
+
+        # Oblicz kąt do tego rogu
+        angle = atan2(target_x - px, top_y - py) / pi
+        return angle
 
     def create_new_generation_if_out_of_time(self, dt):
         self.gen_timer += dt
-        if self.gen_timer >= self.max_gen_time:
+        if self.gen_timer >= self.max_gen_time + self.gen:
             self.gen_timer = 0
             self.end_generation_calculations()
             self.game_manager.reset_transitions()
+            #self.game_manager.generate_platforms()
             self.run_one_generation()
 
     def end_generation_calculations(self):

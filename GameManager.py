@@ -20,6 +20,8 @@ class GameManager:
         self.transition_manager = ScreenTransitionManager(self.screen_height)
         self.ai_manager = AIManager(self)
 
+        self.curr_platform_rotation = 0
+
         if is_player_controlled:
             self.create_player(0)
 
@@ -30,13 +32,19 @@ class GameManager:
 
     def create_player(self, id):
         #spawn player standing at position center
-        self.players.append(Player(self.screen_width / 2, self.screen_height - 128, self.isPlayerControlled, id))
+        self.players.append(Player(self.screen_width * 1/2, self.screen_height - 128, self.isPlayerControlled, id))
 
     def generate_platforms(self):
+        self.curr_platform_rotation += 1
         self.platforms.clear()
 
-        file_path = os.path.join(os.path.dirname(__file__), "platformData.txt")
-    
+        file_path = os.path.join(os.path.dirname(__file__), "platformData1.txt")
+
+        #if self.curr_platform_rotation % 2 == 0:
+            #file_path = os.path.join(os.path.dirname(__file__), "platformData1.txt")
+        #else:
+        #    file_path = os.path.join(os.path.dirname(__file__), "platformData2.txt")
+
         try:
             with open(file_path, "r") as file:
                 platform_id = 0
@@ -53,7 +61,7 @@ class GameManager:
                         platform_id += 1
                         self.platforms.append(platform)
         except FileNotFoundError:
-            print("platformData.txt not found.")
+            print("platformData1.txt not found.")
         self.platforms.sort(key=lambda p: p.reward_level)
 
 
@@ -62,18 +70,15 @@ class GameManager:
         for player in self.players:
             if not self.isPlayerControlled:
                 player.move_ai(delta_time)
-                player.ai.apply_fitness_decline(delta_time)
             else:
                 player.move_player(delta_time)
 
             #screen edge detection
             if player.hitbox.left < 0:
-                player.hitbox.left = 0
-                player.move_pos_to_hitbox()
+                player.screen_left_edge_collision()
 
             if player.hitbox.right > self.screen_width:
-                player.hitbox.right = self.screen_width
-                player.move_pos_to_hitbox()
+                player.screen_right_edge_collision(self.screen_width)
 
             # Standing on platform detection flag
             on_platform = False
