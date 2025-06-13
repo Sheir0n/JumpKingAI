@@ -51,10 +51,10 @@ class AIManager:
         curr_id = player.curr_platform_id
         # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
 
-        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 3]
-        if len(seen_platforms) < 3 and seen_platforms:
+        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
+        if len(seen_platforms) < 2 and seen_platforms:
             last = seen_platforms[-1]
-            seen_platforms.extend([last] * (3 - len(seen_platforms)))
+            seen_platforms.extend([last] * (2 - len(seen_platforms)))
 
             #ver 1
         # return [
@@ -158,30 +158,38 @@ class AIManager:
         # ]
 
     #ver 5b
+        MAX_COUNT = 10
+        player_bottom = player.hitbox.bottom
+
         return [
             player.currJumpCharge / player.MAXJUMPCHARGE,
             player.hitbox.centerx / self.game_manager.screen_width,
-            player.hitbox.centery / self.game_manager.screen_height,
 
-            player.ai.previous_jump_dir / 1.0,
+            # Informacja o poprzednim kierunku skoku
+            1.0 if player.ai.previous_jump_dir < 0 else 0.0,  # left
+            1.0 if player.ai.previous_jump_dir > 0 else 0.0,  # right
+
+            # Licznik skoków w tym samym kierunku (ograniczony)
+            min(player.ai.same_dir_count / MAX_COUNT, 1.0),
 
             # Pozycja względem centrum platformy (ograniczona)
             max(-1.0, min(1.0,
-                          (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (seen_platforms[0].hitbox.width / 2)
+                          (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (
+                                      seen_platforms[0].hitbox.width / 2)
                           )),
 
             self.nearest_platform_distance(seen_platforms[1], player),
             self.nearest_platform_angle(player, seen_platforms[1]),
 
-            self.nearest_platform_distance(seen_platforms[2], player),
-            self.nearest_platform_angle(player, seen_platforms[2]),
+            # Nowe: względna wysokość platformy względem gracza
+            (seen_platforms[1].hitbox.top - player_bottom) / self.game_manager.screen_height,
 
             seen_platforms[1].hitbox.width / self.game_manager.screen_width,
-            seen_platforms[2].hitbox.width / self.game_manager.screen_width,
 
             1.0 if player.hitbox.left < 0.05 * self.game_manager.screen_width else 0.0,
             1.0 if player.hitbox.right > 0.95 * self.game_manager.screen_width else 0.0
         ]
+
     def nearest_platform_distance(self, platform, player):
         x_dist = min(abs(platform.hitbox.left - player.hitbox.right), abs(platform.hitbox.right - player.hitbox.left)) / self.game_manager.screen_width
         y_dist = abs((player.hitbox.bottom - platform.hitbox.top) / self.game_manager.screen_height)

@@ -22,7 +22,7 @@ class PlayerAi:
 
     #jeśli osiągnie highscore
     def apply_highscore_reward(self, platform_score):
-        base_reward = 25
+        base_reward = 20
         base_reward = 0
         self.genome.fitness += base_reward * sqrt(platform_score)
 
@@ -45,7 +45,7 @@ class PlayerAi:
         self.genome.fitness -= 1
 
     def screen_edge_bounce(self):
-        self.genome.fitness -= 1
+        self.genome.fitness -= 20
         #print("edge")
 
     def reward_jump_direction_change(self, current_dir):
@@ -56,5 +56,5 @@ class PlayerAi:
             self.previous_jump_dir = current_dir
         else:
             self.same_dir_count += 1
-            if self.same_dir_count > 2:
-                self.genome.fitness -= self.same_dir_count
+            if self.same_dir_count > 3:
+                self.genome.fitness -= self.same_dir_count * 10

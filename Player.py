@@ -157,13 +157,14 @@ class Player:
         self.jumpDirection = 0
         self.move_pos_to_hitbox()
 
-        if self.hitbox.bottom < self.jump_begin_height:
-            self.ai.jump_bonus()
-            #print("bonus")
-        elif self.hitbox.bottom > self.jump_begin_height:
-            self.ai.jump_penalty()
-        else:
-            self.ai.same_height_jump()
+        if not self.player_controlled:
+            if self.hitbox.bottom < self.jump_begin_height:
+                self.ai.jump_bonus()
+                #print("bonus")
+            elif self.hitbox.bottom > self.jump_begin_height:
+                self.ai.jump_penalty()
+            else:
+                self.ai.same_height_jump()
 
     def platform_bot_collision(self,platform_bot_position):
         self.hitbox.top = platform_bot_position
