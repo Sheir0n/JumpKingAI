@@ -133,11 +133,12 @@ class Player:
                     self.currJumpCharge = 0
 
                     # Kierunek skoku
-                    self.jumpDirection = self.ai_suggested_direction
-                    #print("jumping at", self.ai_suggested_direction)
-                    self.ai.reward_jump_direction_change(self.jumpDirection)
+                    if state["jump_left"]:
+                        self.jumpDirection = -1
+                    elif state["jump_right"]:
+                        self.jumpDirection = 1
 
-
+                    self.ai.jump_in_correct_direction(self.jumpDirection == self.ai_suggested_direction)
                     self.jump_count += 1
 
         else:
@@ -213,7 +214,7 @@ class Player:
     def check_new_platform(self, new_id, new_score):
         if new_id != self.curr_platform_id and not self.player_controlled:
 
-            if self.curr_platform_score >= new_score:
+            if self.curr_platform_score > new_score:
                 self.ai.fall_penalty()
             elif self.curr_platform_score + 1 == new_score:
                 self.ai.apply_on_higher_platform_reward(new_score)

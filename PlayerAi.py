@@ -58,7 +58,7 @@ class PlayerAi:
     def jump_penalty(self):
         enabled = True
         if enabled:
-            self.genome.fitness -= 8
+            self.genome.fitness -= 10
 
     #jeśli skacze na tej samej wysokości
     def same_height_jump(self):
@@ -74,30 +74,28 @@ class PlayerAi:
             if self.edge_bounce_count > 1:
                 self.genome.fitness -= 10
 
-    #nagroda/kara za zmianę kierunku skoku
-    def reward_jump_direction_change(self, current_dir):
-        enabled = False
-        if enabled:
-            if self.previous_jump_dir != current_dir:
-                if self.previous_jump_dir != 0:
-                    self.genome.fitness += 5
-                    self.edge_bounce_count = 0
-                    #print("new jump dir!")
-                self.previous_jump_dir = current_dir
-            else:
-                self.same_dir_count += 1
-                if self.same_dir_count > 3:
-                    self.genome.fitness -= self.same_dir_count * 2
-
     def walk_bonus(self,dt):
         enabled = True
         if enabled:
-            base_walk_bonus = 3
+            base_walk_bonus = 1
             self.genome.fitness += base_walk_bonus * dt
+
+    def jump_in_correct_direction(self, is_correct):
+        enabled = True
+        if enabled:
+            if is_correct:
+                base_bonus = 3
+                self.genome.fitness += base_bonus
+            else:
+                base_penality = 5
+                self.genome.fitness -= base_penality
 
     def change_fitness_color(self,record):
         if record <= 0:
             fitness_color = 0
+        elif self.genome.fitness > record:
+            self.player.color = (128,255,128)
+            return
         elif self.height_enabled:
             fitness_color = 255 * clamp((self.genome.fitness + (self.height_reward_per_unit * self.player.record_height))
                                         /record,0,1)

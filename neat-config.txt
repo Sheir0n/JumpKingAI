@@ -39,7 +39,7 @@ node_delete_prob        = 0.2
 
 num_hidden              = 2
 num_inputs              = 9
-num_outputs             = 3
+num_outputs             = 4
 
 response_init_mean      = 1.0
 response_init_stdev     = 0.1
@@ -62,9 +62,9 @@ compatibility_threshold = 2.5
 
 [DefaultStagnation]
 species_fitness_func = mean
-max_stagnation       = 15
+max_stagnation       = 20
 species_elitism      = 3
 
 [DefaultReproduction]
 elitism            = 3
-survival_threshold = 0.15
+survival_threshold = 0.3
