@@ -3,7 +3,7 @@ from pygame.math import clamp
 
 from Player import Player
 from Platform import Platform
-from ScreenTransitionManager import ScreenTransitionManager
+from LevelManager import LevelManager
 from AIManager import AIManager
 import os
 
@@ -17,22 +17,22 @@ class GameManager:
         self.screen_width = self.screen.get_width()
         self.screen_height = self.screen.get_height()
 
-        self.transition_manager = ScreenTransitionManager(self.screen_height)
-        self.ai_manager = AIManager(self)
-
         self.curr_platform_rotation = 0
-
-        if is_player_controlled:
-            self.create_player(0)
 
         self.platforms = []
         self.generate_platforms()
+        self.level_manager = LevelManager(self.screen_height,self.screen_width, self.platforms)
+
+        if is_player_controlled:
+            self.create_player(0)
+        self.ai_manager = AIManager(self)
+
         self.maxScore = 11
         self.win = False
 
     def create_player(self, id):
         #spawn player standing at position center
-        self.players.append(Player(self.screen_width * 1/2, self.screen_height - 128, self.isPlayerControlled, id))
+        self.players.append(Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, id))
 
     def generate_platforms(self):
         self.curr_platform_rotation += 1
@@ -153,8 +153,11 @@ class GameManager:
         if not self.isPlayerControlled:
             self.ai_manager.create_new_generation_if_out_of_time(delta_time)
 
+        #checking player reaching checkpoints
+        self.level_manager.check_checkpoint_platform_id(self.players,self.platforms)
+
         # off screen offset adjustment
-        self.transition_manager.adjust_offscreen_pos(self.players, self.platforms)
+        self.level_manager.adjust_offscreen_pos(self.players, self.platforms)
 
     def player_over_platform_horizontally(self, platform, player):
         if player.hitbox.right > platform.hitbox.left and player.hitbox.left < platform.hitbox.right:
@@ -172,13 +175,17 @@ class GameManager:
         for platform in self.platforms:
             pygame.draw.rect(self.screen, (0, 200, 100), platform.hitbox)
 
-    def reset_transitions(self):
-        self.transition_manager.reset(self.players,self.platforms)
+    def move_to_checkpoint(self):
+        self.level_manager.move_objects_to_checkpoint(self.players,self.platforms,self.curr_platform_rotation)
 
     # player and object graphics
     def update_draw(self):
+        if not self.isPlayerControlled:
+            for p in self.players:
+                p.ai.change_fitness_color(self.ai_manager.fitness_record)
+
         for p in self.players:
-            pygame.draw.rect(self.screen, (250, 0, 0), p.hitbox)
+            pygame.draw.rect(self.screen, p.color, p.hitbox)
 
     def victory_window(self):
         SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600

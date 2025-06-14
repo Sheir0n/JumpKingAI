@@ -18,12 +18,10 @@ class NEATInputController(InputController):
 
     def get_input(self):
         inputs = self.obs_fn()
-        direction, jump_direction, jump_trigger, jump_strength = self.net.activate(inputs)
+        direction, jump_trigger, jump_strength = self.net.activate(inputs)
         return {
-            "left": direction > 0,
-            "right": direction <= 0,
-            "left_jump": jump_direction > 0,
-            "right_jump": jump_direction <= 0,
+            "left": direction > -0.2,
+            "right": direction <= 0.2,
             "jump_trigger": jump_trigger > 0.5,
             "jump_strength":  (jump_strength + 1) / 2
         }

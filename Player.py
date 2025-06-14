@@ -16,6 +16,7 @@ class Player:
         self.posY = float(posY-self.HEIGHT)
 
         self.hitbox = pygame.Rect((self.posX, self.posY, self.WIDTH, self.HEIGHT))
+        self.color = (255,0,0)
         self.id = player_id
         self.player_controlled = player_controlled
 
@@ -24,10 +25,10 @@ class Player:
         self.AIRSPEED = 600
 
         self.in_air = False
-        self.MAXJUMPCHARGE = 1200
+        self.MAXJUMPCHARGE = 1350
         self.MINJUMPCHARGE = 10
         self.currJumpCharge = 0.0
-        self.jumpChargeRatePerSec = 1200
+        self.jumpChargeRatePerSec = 1350
         self.jumpDirection = 0
 
         self.GRAVITYRATEPERSEC = 2600
@@ -40,8 +41,10 @@ class Player:
 
         self.jump_count = 0
         self.record_height = 0
-
+        self.total_screen_height = 0
         self.jump_begin_height = 0
+
+        self.ai_suggested_direction = 0
 
         if self.player_controlled:
             self.controller = PlayerInputController()
@@ -64,6 +67,9 @@ class Player:
                     self.posX -= self.GROUNDSPEED * delta_time
                 if state["right"]:
                     self.posX += self.GROUNDSPEED * delta_time
+
+                if (state["right"] ^ state["left"]) and not self.player_controlled:
+                    self.ai.walk_bonus(delta_time)
 
             elif state["jump"]:
                 self.currJumpCharge = max(self.MINJUMPCHARGE,
@@ -123,11 +129,12 @@ class Player:
                     self.in_air = True
                     self.jump_begin_height = self.hitbox.bottom
                     self.upAcceleration = target_charge
-                    print("jump charge: ", self.currJumpCharge)
+                    #print("jump charge: ", self.currJumpCharge)
                     self.currJumpCharge = 0
 
                     # Kierunek skoku
-                    self.jumpDirection = -1 if state["left_jump"] else 1 if state["right_jump"] else 0
+                    self.jumpDirection = self.ai_suggested_direction
+                    #print("jumping at", self.ai_suggested_direction)
                     self.ai.reward_jump_direction_change(self.jumpDirection)
 
 
@@ -191,7 +198,8 @@ class Player:
         if self.upAcceleration > 0:
             self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        self.ai.screen_edge_bounce()
+        if not self.player_controlled:
+            self.ai.screen_edge_bounce()
 
     def screen_right_edge_collision(self, screen_width):
         self.hitbox.right = screen_width
@@ -199,18 +207,21 @@ class Player:
         if self.upAcceleration > 0:
             self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
-        self.ai.screen_edge_bounce()
+        if not self.player_controlled:
+            self.ai.screen_edge_bounce()
 
     def check_new_platform(self, new_id, new_score):
         if new_id != self.curr_platform_id and not self.player_controlled:
+
             if self.curr_platform_score >= new_score:
                 self.ai.fall_penalty()
-            elif self.curr_platform_score < new_score:
+            elif self.curr_platform_score + 1 == new_score:
                 self.ai.apply_on_higher_platform_reward(new_score)
 
             self.curr_platform_score = new_score
+            self.curr_platform_id = new_id
 
-            if self.curr_platform_score > self.platform_highscore:
+            if self.curr_platform_score + 1 == self.platform_highscore:
                 self.platform_highscore = self.curr_platform_score
                 #print("id: ", self.id, " - new highscore! ", self.platform_highscore)
 
@@ -221,3 +232,7 @@ class Player:
         new_height = screen_height - self.hitbox.bottom
         if new_height > self.record_height:
             self.record_height = new_height
+
+    def set_suggested_direction(self,direction):
+        self.ai_suggested_direction = direction
+        #print("ustawiam ", self.ai_suggested_direction)

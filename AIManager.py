@@ -21,6 +21,8 @@ class AIManager:
 
         self.stop_running = False
 
+        self.fitness_record = 0
+
         #TODO: PRZEROBIĆ TO ABY DZIAŁAŁO NA DELTA TIME
         #player.ai.distance_to_next_platform_bonus(self.game_manager.platforms, self.game_manager.screen_width, self.game_manager.screen_height)
 
@@ -42,10 +44,9 @@ class AIManager:
             current_player = self.game_manager.players[len(self.game_manager.players) - 1]
 
             current_player.create_player_ai(
-            net,
-            lambda: self.build_observation(current_player),  # przekazujemy kontekst gracza
-            g)
-            players.append(current_player)
+                net,
+                lambda p=current_player: self.build_observation(p),
+                g)
 
     def build_observation(self, player):
         curr_id = player.curr_platform_id
@@ -56,6 +57,8 @@ class AIManager:
             last = seen_platforms[-1]
             seen_platforms.extend([last] * (2 - len(seen_platforms)))
 
+        #ustawienie graczowi kierunku do kolejnej platformy
+        player.set_suggested_direction(-1.0 if player.hitbox.centerx > seen_platforms[1].hitbox.centerx else 1.0)
             #ver 1
         # return [
         #     # jumping
@@ -161,34 +164,84 @@ class AIManager:
         MAX_COUNT = 10
         player_bottom = player.hitbox.bottom
 
+        # return [
+        #     player.currJumpCharge / player.MAXJUMPCHARGE,
+        #     player.hitbox.centerx / self.game_manager.screen_width,
+        #
+        #     # Pozycja względem centrum platformy (ograniczona)
+        #     max(-1.0, min(1.0,
+        #                   (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (
+        #                               seen_platforms[0].hitbox.width / 2)
+        #                   )),
+        #
+        #     self.nearest_platform_distance(seen_platforms[1], player),
+        #     self.nearest_platform_angle(player, seen_platforms[1]),
+        #
+        #     # Nowe: względna wysokość platformy względem gracza
+        #     (seen_platforms[1].hitbox.top - player_bottom) / self.game_manager.screen_height,
+        #
+        #     seen_platforms[1].hitbox.width / self.game_manager.screen_width,
+        #
+        #     1.0 if player.hitbox.left < 0.05 * self.game_manager.screen_width else 0.0,
+        #     1.0 if player.hitbox.right > 0.95 * self.game_manager.screen_width else 0.0
+        # ]
+
+    #ver 6
+        # return [
+        #     #pozycja względem ekranu
+        #     player.posX - self.game_manager.screen_width,
+        #     player.posY - self.game_manager.screen_height,
+        #
+        #     #velocity
+        #     player.upAcceleration / player.TERMINALVELOCITY,
+        #     player.jumpDirection,
+        #
+        #     #czy jest na ziemi
+        #     player.in_air,
+        #
+        #     #pozycja do platformy na której stoi
+        #     (player.posX - seen_platforms[0].hitbox.centerx) / self.game_manager.screen_width,
+        #     #rozmiar
+        #     seen_platforms[0].hitbox.width / self.game_manager.screen_width,
+        #
+        #     #pozycja do kolejnej platformy
+        #     (player.posX - seen_platforms[1].hitbox.centerx) / self.game_manager.screen_width,
+        #     (player.posY - seen_platforms[1].hitbox.centery) / self.game_manager.screen_height,
+        #
+        #     seen_platforms[1].hitbox.width / self.game_manager.screen_width,
+        #     seen_platforms[1].hitbox.height / self.game_manager.screen_height,
+        # ]
+
+        # ver 7 dla uproszczonej sieci
         return [
-            player.currJumpCharge / player.MAXJUMPCHARGE,
-            player.hitbox.centerx / self.game_manager.screen_width,
+            # 1. Pozycja X względem środka ekranu (od -1 do 1)
+            (player.hitbox.centerx - self.game_manager.screen_width / 2) / (self.game_manager.screen_width / 2),
 
-            # Informacja o poprzednim kierunku skoku
-            1.0 if player.ai.previous_jump_dir < 0 else 0.0,  # left
-            1.0 if player.ai.previous_jump_dir > 0 else 0.0,  # right
+            # 2. Pozycja Y względem dna ekranu (od 0 na dole do -1 na górze)
+            (self.game_manager.screen_height - player.hitbox.bottom) / self.game_manager.screen_height,
 
-            # Licznik skoków w tym samym kierunku (ograniczony)
-            min(player.ai.same_dir_count / MAX_COUNT, 1.0),
+            # 3. Prędkość pionowa (w dół = dodatnia)
+            player.upAcceleration / player.TERMINALVELOCITY,
 
-            # Pozycja względem centrum platformy (ograniczona)
-            max(-1.0, min(1.0,
-                          (player.hitbox.centerx - seen_platforms[0].hitbox.centerx) / (
-                                      seen_platforms[0].hitbox.width / 2)
-                          )),
+            # 4. Czy w powietrzu (1.0) czy na platformie (0.0)
+            1.0 if player.in_air else 0.0,
 
-            self.nearest_platform_distance(seen_platforms[1], player),
-            self.nearest_platform_angle(player, seen_platforms[1]),
+            # 5. Relatywna pozycja X kolejnej platformy (od -1 do 1)
+            (seen_platforms[0].hitbox.centerx - player.hitbox.centerx) / (self.game_manager.screen_width / 2),
 
-            # Nowe: względna wysokość platformy względem gracza
-            (seen_platforms[1].hitbox.top - player_bottom) / self.game_manager.screen_height,
+            # 6. Szerokość aktualnej platformy (0–1)
+            seen_platforms[0].hitbox.width / self.game_manager.screen_width,
 
+            # 7. Relatywna pozycja X kolejnej platformy (od -1 do 1)
+            (seen_platforms[1].hitbox.centerx - player.hitbox.centerx) / (self.game_manager.screen_width / 2),
+
+            # 8. Relatywna pozycja Y kolejnej platformy (od -1 do 1)
+            (seen_platforms[1].hitbox.top - player.hitbox.bottom) / self.game_manager.screen_height,
+
+            # 9. Szerokość kolejnej platformy (0–1)
             seen_platforms[1].hitbox.width / self.game_manager.screen_width,
-
-            1.0 if player.hitbox.left < 0.05 * self.game_manager.screen_width else 0.0,
-            1.0 if player.hitbox.right > 0.95 * self.game_manager.screen_width else 0.0
         ]
+
 
     def nearest_platform_distance(self, platform, player):
         x_dist = min(abs(platform.hitbox.left - player.hitbox.right), abs(platform.hitbox.right - player.hitbox.left)) / self.game_manager.screen_width
@@ -217,9 +270,8 @@ class AIManager:
         if self.gen_timer >= self.max_gen_time:
             self.gen_timer = 0
             self.end_generation_calculations()
-            self.game_manager.reset_transitions()
-            #self.game_manager.generate_platforms()
             self.run_one_generation()
+            self.game_manager.move_to_checkpoint()
 
     def end_generation_calculations(self):
         for player in self.game_manager.players:
@@ -232,9 +284,12 @@ class AIManager:
         fitness_stats = []
         for player in self.game_manager.players:
             fitness_stats.append(player.ai.genome.fitness)
-        fitness_stats.sort(reverse=True)
+        sorted_stats = sorted(fitness_stats, reverse=True)
 
-        for i, fitness in enumerate(fitness_stats[:10], start=1):
+        if sorted_stats[0] > self.fitness_record:
+            self.fitness_record = sorted_stats[0]
+
+        for i, fitness in enumerate(sorted_stats[:10], start=1):
             print(f"{i}. {fitness:.2f}")
 
 

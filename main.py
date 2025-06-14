@@ -5,7 +5,7 @@ from GameManager import GameManager
 def gameWindow():
     game_manager = GameManager(screen, selected_index)
     clock = pygame.time.Clock()
-    targetFrameRate = 500
+    targetFrameRate = 144
     speed_multiplication = 3
 
     running = True
@@ -14,7 +14,7 @@ def gameWindow():
 
     # Akumulator i krok fizyczny
     accumulator = 0.0
-    physics_step = 0.01 * speed_multiplication
+    physics_step = 0.01
     max_dt = 0.05  # ograniczenie przy dużych lagach
 
     while running:
@@ -33,9 +33,14 @@ def gameWindow():
                 running = False
 
         # Kilkukrotne wywołanie update, jeśli potrzeba
-        while accumulator >= physics_step:
+        if accumulator < physics_step*10:
+            while accumulator >= physics_step:
+                game_manager.update(physics_step)
+                accumulator -= physics_step
+        else:
+            accumulator = 0
             game_manager.update(physics_step)
-            accumulator -= physics_step
+            #czekanie na odlagowanie
 
         # Rysowanie raz na pętlę (możesz też renderować interpolując)
         screen.fill((0, 0, 0))
