@@ -1,12 +1,14 @@
+import random
 from math import sqrt, atan2, pi
 
 import neat
 import neat.population
+import weakref
 from pygame.math import clamp
 
 class AIManager:
     def __init__(self, game_manager):
-        self.game_manager = game_manager
+        self.game_manager = weakref.ref(game_manager)
         config = neat.Config(
             neat.DefaultGenome,
             neat.DefaultReproduction,
@@ -22,40 +24,68 @@ class AIManager:
         self.stop_running = False
 
         self.fitness_record = 0
+        self.stored_genomes = []
 
         #TODO: PRZEROBIĆ TO ABY DZIAŁAŁO NA DELTA TIME
         #player.ai.distance_to_next_platform_bonus(self.game_manager.platforms, self.game_manager.screen_width, self.game_manager.screen_height)
 
     def run_one_generation(self):
         self.gen += 1
-        self.game_manager.generate_platforms()
-        print(f"Generacja {self.gen}")
+        print("NEW GENERATION: ", self.gen)
+        self.game_manager().generate_platforms()
+        self.game_manager().players.clear()
         self.population.run(self.run_player, 1)
 
     def run_player(self, genomes, config):
         nets = []
-        players = []
 
         for id, g in genomes:
             net = neat.nn.FeedForwardNetwork.create(g, config)
             nets.append(net)
             g.fitness = 0
-            self.game_manager.create_player(len(self.game_manager.players))
-            current_player = self.game_manager.players[len(self.game_manager.players) - 1]
+            self.stored_genomes.append(g)
+            self.game_manager().create_player(len(self.game_manager().players))
+            current_player = self.game_manager().players[len(self.game_manager().players) - 1]
 
             current_player.create_player_ai(
                 net,
                 lambda p=current_player: self.build_observation(p),
                 g)
 
+        #uzupełnienie populacji
+
+        pop_size = config.pop_size
+        current_size = len(genomes)
+        missing = pop_size - current_size
+
+        if missing > 0:
+            print(f"⚠️ Brakuje {missing} osobników — generuję losowe.")
+
+            for i in range(missing):
+                new_genome_id = random.randint(1_000_000, 9_999_999)
+                new_genome = config.genome_type(new_genome_id)
+                new_genome.configure_new(config.genome_config)
+
+                net = neat.nn.FeedForwardNetwork.create(new_genome, config)
+                new_genome.fitness = 0
+                self.stored_genomes.append(new_genome)
+
+                self.game_manager().create_player(len(self.game_manager().players))
+                current_player = self.game_manager().players[-1]
+
+                current_player.create_player_ai(
+                    net,
+                    lambda p=current_player: self.build_observation(p),
+                    new_genome
+                )
+
     def build_observation(self, player):
         curr_id = player.curr_platform_id
-        # Pobranie danych następnych platform, jeśli brak to kopiuje ostatnie elementy
 
-        seen_platforms = self.game_manager.platforms[curr_id:curr_id + 2]
-        if len(seen_platforms) < 2 and seen_platforms:
+        seen_platforms = self.game_manager().platforms[curr_id:curr_id + 3]
+        if len(seen_platforms) < 3 and seen_platforms:
             last = seen_platforms[-1]
-            seen_platforms.extend([last] * (2 - len(seen_platforms)))
+            seen_platforms.extend([last] * (3 - len(seen_platforms)))
 
         #ustawienie graczowi kierunku do kolejnej platformy
         player.set_suggested_direction(-1.0 if player.hitbox.centerx > seen_platforms[1].hitbox.centerx else 1.0)
@@ -211,41 +241,41 @@ class AIManager:
         #     seen_platforms[1].hitbox.width / self.game_manager.screen_width,
         #     seen_platforms[1].hitbox.height / self.game_manager.screen_height,
         # ]
-
+       # print("działam ", player.id)
         # ver 7 dla uproszczonej sieci
         return [
             # 1. Pozycja X względem środka ekranu (od -1 do 1)
-            (player.hitbox.centerx - self.game_manager.screen_width / 2) / (self.game_manager.screen_width / 2),
+            (player.hitbox.centerx - self.game_manager().screen_width / 2) / (self.game_manager().screen_width / 2),
 
-            # 2. Pozycja Y względem dna ekranu (od 0 na dole do -1 na górze)
-            (self.game_manager.screen_height - player.hitbox.bottom) / self.game_manager.screen_height,
-
-            # 3. Prędkość pionowa (w dół = dodatnia)
+            # 2. Prędkość pionowa (w dół = dodatnia)
             player.upAcceleration / player.TERMINALVELOCITY,
 
-            # 4. Czy w powietrzu (1.0) czy na platformie (0.0)
+            # 3. Czy w powietrzu (1.0) czy na platformie (0.0)
             1.0 if player.in_air else 0.0,
 
-            # 5. Relatywna pozycja X kolejnej platformy (od -1 do 1)
-            (seen_platforms[0].hitbox.centerx - player.hitbox.centerx) / (self.game_manager.screen_width / 2),
+            # 4. Relatywna pozycja X aktualnej platformy (od -1 do 1)
+            (seen_platforms[0].hitbox.centerx - player.hitbox.centerx) / (self.game_manager().screen_width / 2),
 
-            # 6. Szerokość aktualnej platformy (0–1)
-            seen_platforms[0].hitbox.width / self.game_manager.screen_width,
+            # 5. Szerokość aktualnej platformy (0–1)
+            seen_platforms[0].hitbox.width / self.game_manager().screen_width,
 
-            # 7. Relatywna pozycja X kolejnej platformy (od -1 do 1)
-            (seen_platforms[1].hitbox.centerx - player.hitbox.centerx) / (self.game_manager.screen_width / 2),
+            # 6. Relatywna pozycja X kolejnej platformy (od -1 do 1)
+            (seen_platforms[1].hitbox.centerx - player.hitbox.centerx) / (self.game_manager().screen_width / 2),
 
-            # 8. Relatywna pozycja Y kolejnej platformy (od -1 do 1)
-            (seen_platforms[1].hitbox.top - player.hitbox.bottom) / self.game_manager.screen_height,
+            # 7. Relatywna pozycja Y kolejnej platformy (od -1 do 1)
+            (seen_platforms[1].hitbox.top - player.hitbox.bottom) / self.game_manager().screen_height,
 
-            # 9. Szerokość kolejnej platformy (0–1)
-            seen_platforms[1].hitbox.width / self.game_manager.screen_width,
+            # 8. Szerokość kolejnej platformy (0–1)
+            seen_platforms[1].hitbox.width / self.game_manager().screen_width,
+
+            # 9. Sugerowany kierunek do kolejnej platformy
+            -1.0 if player.hitbox.centerx > seen_platforms[1].hitbox.centerx else 1.0,
         ]
 
 
     def nearest_platform_distance(self, platform, player):
         x_dist = min(abs(platform.hitbox.left - player.hitbox.right), abs(platform.hitbox.right - player.hitbox.left)) / self.game_manager.screen_width
-        y_dist = abs((player.hitbox.bottom - platform.hitbox.top) / self.game_manager.screen_height)
+        y_dist = abs((player.hitbox.bottom - platform.hitbox.top) / self.game_manager().screen_height)
 
         return sqrt(pow(x_dist,2) + pow(y_dist,2))
 
@@ -270,20 +300,25 @@ class AIManager:
         if self.gen_timer >= self.max_gen_time:
             self.gen_timer = 0
             self.end_generation_calculations()
+            self.game_manager().players.clear()
+            self.stored_genomes.clear()
+
+            print(len(self.game_manager().players))
             self.run_one_generation()
-            self.game_manager.move_to_checkpoint()
+            print(len(self.game_manager().players))
+
+            self.game_manager().move_to_checkpoint()
 
     def end_generation_calculations(self):
-        for player in self.game_manager.players:
+        for player in self.game_manager().players:
             player.ai.height_record_reward()
 
         self.collect_and_display_gen_stats()
-        self.game_manager.players.clear()
 
     def collect_and_display_gen_stats(self):
         fitness_stats = []
-        for player in self.game_manager.players:
-            fitness_stats.append(player.ai.genome.fitness)
+        for player in self.game_manager().players:
+            fitness_stats.append(player.ai.genome().fitness)
         sorted_stats = sorted(fitness_stats, reverse=True)
 
         if sorted_stats[0] > self.fitness_record:

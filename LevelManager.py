@@ -5,53 +5,65 @@ import os
 
 #class used to move screen up or down
 class LevelManager:
-    def __init__(self, screen_height, screen_width, platforms):
+    def __init__(self, screen_height, screen_width, platforms, is_rotating):
         self.screen_height = screen_height
         self.screen_width = screen_width
         self.curr_screen_id = 0
 
         self.curr_checkpoint_platform_id = 0
 
-        self.checkpoints = {0,2}
+        self.checkpoints = {0,3,7}
         self.checkpoint_starting_posx = platforms[0].hitbox.centerx
         self.checkpoint_starting_posy = platforms[0].hitbox.top
 
+        self.rotating_platforms = False
+
     def check_checkpoint_platform_id(self,players,platforms):
         for player in players:
-            if player.platform_highscore >= self.curr_checkpoint_platform_id:
+            if player.curr_platform_id > self.curr_checkpoint_platform_id:
                 for checkpoint in self.checkpoints:
-                    if player.platform_highscore >= checkpoint > self.curr_checkpoint_platform_id:
+                    if player.curr_platform_id >= checkpoint > self.curr_checkpoint_platform_id:
                         self.curr_checkpoint_platform_id = checkpoint
-                        self.checkpoint_starting_posy = platforms[checkpoint].hitbox.top
+                        self.checkpoint_starting_posy = platforms[checkpoint].total_y_pos
                         self.checkpoint_starting_posx = platforms[checkpoint].hitbox.centerx
-                        print("new checkpoint")
+                        print("new checkpoint", self.curr_checkpoint_platform_id)
 
-    def move_objects_to_checkpoint(self,players,platforms, curr_platform_rotation):
+    def move_objects_to_checkpoint(self,players, platforms, curr_platform_rotation):
         for player in players:
             player.posY = platforms[self.curr_checkpoint_platform_id].hitbox.top
-            if curr_platform_rotation % 2 == 1:
+            if curr_platform_rotation % 2 == 0 or not self.rotating_platforms:
                 player.posX = platforms[self.curr_checkpoint_platform_id].hitbox.centerx
             else:
                 player.posX = self.screen_width - platforms[self.curr_checkpoint_platform_id].hitbox.centerx
 
             player.move_pos_to_hitbox()
 
-        self.adjust_offscreen_pos(players, platforms)
-
     #checks if target is offscreen
     def adjust_offscreen_pos(self, players, platforms):
         #player is obove current screen
-        while players[0].hitbox.bottom < 0:
+        highest_player = self.get_highest_player(players)
+
+        while highest_player.hitbox.bottom < 0:
             self.move_all(players, platforms, 1)
             self.curr_screen_id += 1
             for player in players:
-                player.total_screen_height -= self.screen_height
+                player.screen_count += 1
 
-        while players[0].hitbox.bottom > self.screen_height:
+        while highest_player.hitbox.bottom > self.screen_height:
             self.move_all(players, platforms, -1)
             self.curr_screen_id -= 1
             for player in players:
-                player.total_screen_height += self.screen_height
+                player.screen_count -= 1
+
+    def get_highest_player(self, players):
+        highest_player = players[0]
+        highest = (self.screen_height - players[0].hitbox.bottom) + players[0].screen_count * self.screen_height
+        for player in players:
+            height_value = (self.screen_height - player.hitbox.bottom) + player.screen_count * self.screen_height
+            if highest < height_value:
+                highest_player = player
+                highest = height_value
+        return highest_player
 
     #moves all objects relatively to screen transition
     def move_all(self, players, platforms, offset_direction):

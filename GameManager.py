@@ -20,8 +20,9 @@ class GameManager:
         self.curr_platform_rotation = 0
 
         self.platforms = []
+        self.rotating_platforms = False
         self.generate_platforms()
-        self.level_manager = LevelManager(self.screen_height,self.screen_width, self.platforms)
+        self.level_manager = LevelManager(self.screen_height,self.screen_width, self.platforms,self.rotating_platforms)
 
         if is_player_controlled:
             self.create_player(0)
@@ -31,8 +32,11 @@ class GameManager:
         self.win = False
 
     def create_player(self, id):
+        #("creating ", id)
         #spawn player standing at position center
-        self.players.append(Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, id))
+        player = Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, id, self.screen_height)
+        self.players.append(player)
+        return player
 
     def generate_platforms(self):
         self.curr_platform_rotation += 1
@@ -40,7 +44,7 @@ class GameManager:
 
         file_path = os.path.join(os.path.dirname(__file__), "platformData1.txt")
 
-        if self.curr_platform_rotation % 2 == 1:
+        if self.curr_platform_rotation % 2 == 0 or not self.rotating_platforms:
             try:
                 with open(file_path, "r") as file:
                     platform_id = 0
@@ -56,6 +60,7 @@ class GameManager:
                             platform = Platform(x, y, width, height, reward_level, platform_id)
                             platform_id += 1
                             self.platforms.append(platform)
+
             except FileNotFoundError:
                 print("platformData1.txt not found.")
             self.platforms.sort(key=lambda p: p.reward_level)
@@ -86,17 +91,17 @@ class GameManager:
 
             self.platforms.sort(key=lambda p: p.reward_level)
 
-
-
     #update function executes each frame
     def update(self, delta_time):
+        # running ai generation check
+        if not self.isPlayerControlled:
+            self.ai_manager.create_new_generation_if_out_of_time(delta_time)
+
         for player in self.players:
             if not self.isPlayerControlled:
                 player.move_ai(delta_time)
             else:
                 player.move_player(delta_time)
-
-            player.update_record_height(self.screen_height)
 
             #screen edge detection
             if player.hitbox.left < 0:
@@ -149,15 +154,11 @@ class GameManager:
                     elif right_overlap_distance <= min_overlap:
                         player.platform_right_collision(platform.hitbox.right)
 
-        #running ai generation check
-        if not self.isPlayerControlled:
-            self.ai_manager.create_new_generation_if_out_of_time(delta_time)
-
-        #checking player reaching checkpoints
-        self.level_manager.check_checkpoint_platform_id(self.players,self.platforms)
-
         # off screen offset adjustment
         self.level_manager.adjust_offscreen_pos(self.players, self.platforms)
+
+        # checking player reaching checkpoints
+        self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
 
     def player_over_platform_horizontally(self, platform, player):
         if player.hitbox.right > platform.hitbox.left and player.hitbox.left < platform.hitbox.right:

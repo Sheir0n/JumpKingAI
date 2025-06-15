@@ -1,14 +1,15 @@
 from enum import Enum
 from math import sqrt
+import gc
 
 import pygame
 from InputController import PlayerInputController
 from NEATInputController import NEATInputController
 from PlayerAi import PlayerAi
 
-
 class Player:
-    def __init__(self, posX, posY, player_controlled, player_id):
+    instance_count = 0
+    def __init__(self, posX, posY, player_controlled, player_id, screen_height):
         self.WIDTH = 30
         self.HEIGHT = 50
 
@@ -16,6 +17,7 @@ class Player:
         self.posY = float(posY-self.HEIGHT)
 
         self.hitbox = pygame.Rect((self.posX, self.posY, self.WIDTH, self.HEIGHT))
+        #print(self.hitbox.bottom)
         self.color = (255,0,0)
         self.id = player_id
         self.player_controlled = player_controlled
@@ -41,7 +43,10 @@ class Player:
 
         self.jump_count = 0
         self.record_height = 0
-        self.total_screen_height = 0
+        self.screen_height = screen_height
+
+        self.screen_count = 0
+
         self.jump_begin_height = 0
 
         self.ai_suggested_direction = 0
@@ -51,11 +56,14 @@ class Player:
         else:
             self.ai = None
 
+        Player.instance_count += 1
+        #print("Player count:", Player.instance_count)
+
 
     # used by AI Manager
     def create_player_ai(self, neat_network, get_observation, genome):
         self.controller = NEATInputController(neat_network, get_observation)
-        self.ai = PlayerAi(self, neat_network, get_observation, genome)
+        self.ai = PlayerAi(self, genome)
 
     # player movement controls
     def move_player(self, delta_time):
@@ -103,6 +111,7 @@ class Player:
         self.hitbox.topleft = (int(self.posX), int(self.posY))
 
     def move_ai(self, delta_time):
+        #print(self.ai_suggested_direction)
         if self.jump_count < self.ai.max_moves:
             state = self.controller.get_input()
         else:
@@ -164,6 +173,7 @@ class Player:
         self.in_air = False
         self.jumpDirection = 0
         self.move_pos_to_hitbox()
+        self.update_record_height(self.screen_height)
 
         if not self.player_controlled:
             if self.hitbox.bottom < self.jump_begin_height:
@@ -178,6 +188,8 @@ class Player:
         self.hitbox.top = platform_bot_position
         self.upAcceleration = 0
         self.move_pos_to_hitbox()
+        if not self.player_controlled:
+            self.ai.screen_edge_bounce()
 
     def platform_left_collision(self,platform_left_position):
         self.hitbox.right = platform_left_position
@@ -185,6 +197,8 @@ class Player:
         if self.upAcceleration > 0:
             self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
+        if not self.player_controlled:
+            self.ai.screen_edge_bounce()
 
     def platform_right_collision(self, platform_right_position):
         self.hitbox.left = platform_right_position
@@ -192,6 +206,8 @@ class Player:
         if self.upAcceleration > 0:
             self.upAcceleration *= 0.5
         self.move_pos_to_hitbox()
+        if not self.player_controlled:
+            self.ai.screen_edge_bounce()
 
     def screen_left_edge_collision(self):
         self.hitbox.left = 0
@@ -212,8 +228,11 @@ class Player:
             self.ai.screen_edge_bounce()
 
     def check_new_platform(self, new_id, new_score):
-        if new_id != self.curr_platform_id and not self.player_controlled:
+        if new_id != self.curr_platform_id and self.player_controlled:
+            self.curr_platform_score = new_score
+            self.curr_platform_id = new_id
 
+        elif new_id != self.curr_platform_id and not self.player_controlled:
             if self.curr_platform_score > new_score:
                 self.ai.fall_penalty()
             elif self.curr_platform_score + 1 == new_score:
@@ -229,11 +248,18 @@ class Player:
                 if not self.player_controlled:
                     self.ai.apply_highscore_reward(new_score)
 
-    def update_record_height(self,screen_height):
-        new_height = screen_height - self.hitbox.bottom
+    def update_record_height(self, screen_height):
+        new_height = screen_height - self.hitbox.bottom + self.screen_count * screen_height
         if new_height > self.record_height:
             self.record_height = new_height
 
     def set_suggested_direction(self,direction):
         self.ai_suggested_direction = direction
         #print("ustawiam ", self.ai_suggested_direction)
+
+    def calculate_starting_screen_offset(self, screen_height):
+        return (self.screen_height - self.hitbox.bottom)
+
+    def __del__(self):
+        Player.instance_count -= 1
+        #print("Player deleted. Remaining:", Player.instance_count)

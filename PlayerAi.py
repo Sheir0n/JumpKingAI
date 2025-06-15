@@ -3,12 +3,14 @@ from math import sqrt
 from pygame.math import clamp
 
 from NEATInputController import NEATInputController
+import weakref
 
 class PlayerAi:
-    def __init__(self, player, neat_network, get_observation, genome):
-        self.player = player
-        self.genome = genome
-        self.genome.fitness = 10
+    instance_count = 0
+    def __init__(self, player, genome):
+        self.player = weakref.ref(player)
+        self.genome = weakref.ref(genome)
+        self.genome().fitness = 10
 
         self.height_bonus_per_unit = 0.2
 
@@ -18,89 +20,115 @@ class PlayerAi:
 
         self.edge_bounce_count = 0
 
-        self.height_reward_per_unit = 0.05
-        self.height_reward_per_unit = 0
-        self.height_enabled = False
+        self.height_reward_per_unit = 0.1
+        #self.height_reward_per_unit = 0
+        self.height_enabled = True
+
+        PlayerAi.instance_count += 1
+        self.incorrect_jump_count = 0
+        #print("PlayerAi count:", PlayerAi.instance_count)
 
     #kiedy wskoczy wyżej
     def apply_on_higher_platform_reward(self, platform_score):
         base_reward = 10
-        enabled = True
+        enabled = False
         if enabled:
             self.edge_bounce_count = 0
-            self.genome.fitness += base_reward * sqrt(platform_score)
+            self.genome().fitness += base_reward * sqrt(platform_score)
 
     #jeśli osiągnie highscore
     def apply_highscore_reward(self, platform_score):
-        base_reward = 20
+        base_reward = 30
         enabled = False
         if enabled:
-            self.genome.fitness += base_reward * sqrt(platform_score)
+            self.genome().fitness += base_reward * sqrt(platform_score)
 
     def height_record_reward(self):
         if self.height_enabled:
-            if self.edge_bounce_count <= 2:
-                self.genome.fitness += self.height_reward_per_unit * (self.player.record_height + self.player.total_screen_height)
+            #self.genome().fitness += self.height_reward_per_unit * (self.player().record_height + self.player().screen_count * self.player().screen_height)
+            self.genome().fitness += self.height_reward_per_unit * (
+                        self.player().record_height)
 
     #jeśli spadnie niżej
     def fall_penalty(self):
         enabled = False
+        mul_penalty = 5/6
+        add_penalty = 10
         if enabled:
-            self.genome.fitness *= 3 / 5
+            self.genome().fitness *= mul_penalty
+            self.genome().fitness -= add_penalty
 
     #jeśli skoczy wyżej
     def jump_bonus(self):
-        enabled = True
+        enabled = False
         if enabled:
-            self.genome.fitness += 10
+            self.genome().fitness += 10
 
     #jeśli skoczy niżej
     def jump_penalty(self):
-        enabled = True
+        enabled = False
         if enabled:
-            self.genome.fitness -= 10
+            self.genome().fitness -= 5
 
     #jeśli skacze na tej samej wysokości
     def same_height_jump(self):
-        enabled = True
+        enabled = False
         if enabled:
-            self.genome.fitness -= 5
+            self.genome().fitness -= 10
 
     #odbicie się od krawędzi ekranu
     def screen_edge_bounce(self):
         enabled = False
+        base_penalty = 3
         if enabled:
             self.edge_bounce_count += 1
             if self.edge_bounce_count > 1:
-                self.genome.fitness -= 10
+                self.genome().fitness -= base_penalty
 
     def walk_bonus(self,dt):
-        enabled = True
+        enabled = False
         if enabled:
-            base_walk_bonus = 1
-            self.genome.fitness += base_walk_bonus * dt
+            base_walk_bonus = 4
+            self.genome().fitness += base_walk_bonus * dt
 
     def jump_in_correct_direction(self, is_correct):
-        enabled = True
-        if enabled:
+        enabled_bonus = True
+        enabled_penalty = True
+
+        if enabled_bonus:
             if is_correct:
-                base_bonus = 3
-                self.genome.fitness += base_bonus
-            else:
-                base_penality = 5
-                self.genome.fitness -= base_penality
+                if(self.player().currJumpCharge/self.player().MAXJUMPCHARGE) > 0.25:
+                    base_bonus = 1
+                    self.genome().fitness += base_bonus
+
+
+        if enabled_penalty:
+            if not is_correct:
+                self.incorrect_jump_count += 1
 
     def change_fitness_color(self,record):
         if record <= 0:
-            fitness_color = 0
-        elif self.genome.fitness > record:
-            self.player.color = (128,255,128)
             return
-        elif self.height_enabled:
-            fitness_color = 255 * clamp((self.genome.fitness + (self.height_reward_per_unit * self.player.record_height))
-                                        /record,0,1)
-        else:
-            fitness_color = 255 * clamp(self.genome.fitness / record, 0, 1)
 
-        self.player.color = (255,fitness_color,fitness_color)
+        if self.height_enabled:
+            height_record_fitness = (self.height_reward_per_unit * self.player().record_height) * self.player().curr_platform_score
+            calculated_fitness = ((self.genome().fitness + height_record_fitness) * (1 /(self.incorrect_jump_count+1))) / record
+        else:
+            calculated_fitness = self.genome().fitness * (1 /(self.incorrect_jump_count+1)) / record
+
+        if record <= 0:
+            fitness_color = 0
+        elif calculated_fitness > 1.25:
+            self.player().color = (0, 255, 200)
+            return
+        elif calculated_fitness > 1:
+            self.player().color = (64,255,64)
+            return
+        else:
+            fitness_color = 255 * clamp(calculated_fitness,0,1)
+            self.player().color = (255,fitness_color,fitness_color)
+
+    def __del__(self):
+        PlayerAi.instance_count -= 1
+        #print("PlayerAi deleted. Remaining:", PlayerAi.instance_count)
 
