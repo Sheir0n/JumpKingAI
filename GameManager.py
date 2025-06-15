@@ -6,6 +6,7 @@ from Platform import Platform
 from LevelManager import LevelManager
 from AIManager import AIManager
 import os
+import gc
 
 class GameManager:
     def __init__(self, screen, is_player_controlled):
@@ -30,11 +31,20 @@ class GameManager:
 
         self.maxScore = 11
         self.win = False
+        gc.enable()
 
+    #player controlled
     def create_player(self, id):
-        #("creating ", id)
         #spawn player standing at position center
         player = Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, id, self.screen_height)
+        self.players.append(player)
+        return player
+
+    #ai_controlled
+    def create_player_ai(self, player_id, net, genome):
+        #spawn player standing at position center
+        player = Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, player_id, self.screen_height)
+        player.create_player_ai(net, self.ai_manager.observation_func, genome)
         self.players.append(player)
         return player
 
@@ -93,10 +103,6 @@ class GameManager:
 
     #update function executes each frame
     def update(self, delta_time):
-        # running ai generation check
-        if not self.isPlayerControlled:
-            self.ai_manager.create_new_generation_if_out_of_time(delta_time)
-
         for player in self.players:
             if not self.isPlayerControlled:
                 player.move_ai(delta_time)
@@ -184,6 +190,7 @@ class GameManager:
         if not self.isPlayerControlled:
             for p in self.players:
                 p.ai.change_fitness_color(self.ai_manager.fitness_record)
+               # print("im colorful")
 
         for p in self.players:
             pygame.draw.rect(self.screen, p.color, p.hitbox)

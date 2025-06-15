@@ -1,8 +1,6 @@
 from math import sqrt
 
 from pygame.math import clamp
-
-from NEATInputController import NEATInputController
 import weakref
 
 class PlayerAi:
@@ -10,9 +8,9 @@ class PlayerAi:
     def __init__(self, player, genome):
         self.player = weakref.ref(player)
         self.genome = weakref.ref(genome)
-        self.genome().fitness = 10
+        self.genome().fitness = 0
 
-        self.height_bonus_per_unit = 0.2
+        self.height_bonus_per_unit = 0.025
 
         self.max_moves = 5
         self.previous_jump_dir = 0
@@ -25,13 +23,12 @@ class PlayerAi:
         self.height_enabled = True
 
         PlayerAi.instance_count += 1
-        self.incorrect_jump_count = 0
         #print("PlayerAi count:", PlayerAi.instance_count)
 
     #kiedy wskoczy wyżej
     def apply_on_higher_platform_reward(self, platform_score):
         base_reward = 10
-        enabled = False
+        enabled = True
         if enabled:
             self.edge_bounce_count = 0
             self.genome().fitness += base_reward * sqrt(platform_score)
@@ -68,13 +65,13 @@ class PlayerAi:
     def jump_penalty(self):
         enabled = False
         if enabled:
-            self.genome().fitness -= 5
+            self.genome().fitness -= 10
 
     #jeśli skacze na tej samej wysokości
     def same_height_jump(self):
         enabled = False
         if enabled:
-            self.genome().fitness -= 10
+            self.genome().fitness -= 8
 
     #odbicie się od krawędzi ekranu
     def screen_edge_bounce(self):
@@ -97,28 +94,27 @@ class PlayerAi:
 
         if enabled_bonus:
             if is_correct:
-                if(self.player().currJumpCharge/self.player().MAXJUMPCHARGE) > 0.25:
-                    base_bonus = 1
-                    self.genome().fitness += base_bonus
+                base_bonus = 1
+                self.genome().fitness += base_bonus
 
 
         if enabled_penalty:
             if not is_correct:
-                self.incorrect_jump_count += 1
+                base_penalty = 1/2
+                self.genome().fitness *= base_penalty
 
     def change_fitness_color(self,record):
         if record <= 0:
             return
 
         if self.height_enabled:
-            height_record_fitness = (self.height_reward_per_unit * self.player().record_height) * self.player().curr_platform_score
-            calculated_fitness = ((self.genome().fitness + height_record_fitness) * (1 /(self.incorrect_jump_count+1))) / record
+            height_record_fitness = self.height_reward_per_unit * self.player().record_height
+            calculated_fitness = (self.genome().fitness + height_record_fitness) / record
         else:
-            calculated_fitness = self.genome().fitness * (1 /(self.incorrect_jump_count+1)) / record
+            calculated_fitness = self.genome().fitness / record
 
-        if record <= 0:
-            fitness_color = 0
-        elif calculated_fitness > 1.25:
+
+        if calculated_fitness > 1.25:
             self.player().color = (0, 255, 200)
             return
         elif calculated_fitness > 1:

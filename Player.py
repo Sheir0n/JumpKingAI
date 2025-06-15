@@ -6,6 +6,7 @@ import pygame
 from InputController import PlayerInputController
 from NEATInputController import NEATInputController
 from PlayerAi import PlayerAi
+import weakref
 
 class Player:
     instance_count = 0
@@ -17,7 +18,7 @@ class Player:
         self.posY = float(posY-self.HEIGHT)
 
         self.hitbox = pygame.Rect((self.posX, self.posY, self.WIDTH, self.HEIGHT))
-        #print(self.hitbox.bottom)
+
         self.color = (255,0,0)
         self.id = player_id
         self.player_controlled = player_controlled
@@ -62,7 +63,13 @@ class Player:
 
     # used by AI Manager
     def create_player_ai(self, neat_network, get_observation, genome):
-        self.controller = NEATInputController(neat_network, get_observation)
+        weak_self = weakref.ref(self)
+
+        def safe_observation():
+            player = weak_self()
+            return get_observation(player)
+
+        self.controller = NEATInputController(neat_network, safe_observation)
         self.ai = PlayerAi(self, genome)
 
     # player movement controls
