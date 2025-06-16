@@ -27,10 +27,12 @@ class GameManager:
 
         if is_player_controlled:
             self.create_player(0)
-        self.ai_manager = AIManager(self)
+        else:
+            self.ai_manager = AIManager(self)
 
         self.maxScore = 11
         self.win = False
+
         gc.enable()
 
     #player controlled
@@ -159,12 +161,13 @@ class GameManager:
 
                     elif right_overlap_distance <= min_overlap:
                         player.platform_right_collision(platform.hitbox.right)
-
+            
         # off screen offset adjustment
         self.level_manager.adjust_offscreen_pos(self.players, self.platforms)
 
         # checking player reaching checkpoints
         self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
+
 
     def player_over_platform_horizontally(self, platform, player):
         if player.hitbox.right > platform.hitbox.left and player.hitbox.left < platform.hitbox.right:
@@ -215,5 +218,6 @@ class GameManager:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
 
             pygame.display.flip()

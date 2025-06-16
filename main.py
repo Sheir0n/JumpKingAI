@@ -2,6 +2,7 @@ import pygame
 import sys
 import neat
 from GameManager import GameManager
+from UserExitException import UserExitException
 
 # Pygame initailization
 pygame.init()
@@ -28,7 +29,7 @@ global pop
 def run_player():
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock
     game_manager = GameManager(screen, 1)
-
+    running = True
     while running:
         raw_dt = clock.tick(targetFrameRate) / 1000.0
 
@@ -38,6 +39,7 @@ def run_player():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                main_menu()
 
         if accumulator < physics_step*10:
             while accumulator >= physics_step:
@@ -58,7 +60,7 @@ def run_player():
     pygame.quit()
     sys.exit()
 
-#TODO: dorobić zamykanie okna kończońce program
+#TODO: dorobić zamykanie okna kończące program
 def eval_genomes(genomes, config):
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, ge, nets, pop, game_manager
 
@@ -68,7 +70,7 @@ def eval_genomes(genomes, config):
     max_genomes = 2 * config.pop_size
 
     for genome_id, genome in genomes:
-        print("genome count: ", len(genomes))
+        #print("genome count: ", len(genomes))
         if player_id >= max_genomes:
             if genome_id in pop.population:
                 genome.fitness = 0
@@ -87,8 +89,8 @@ def eval_genomes(genomes, config):
 
     while running:
         raw_dt = clock.tick(targetFrameRate) / 1000.0
-        if selected_index == 0:
-            raw_dt *= speed_multiplication
+        #if selected_index == 0:
+        raw_dt *= speed_multiplication
 
         dt = min(raw_dt, max_dt)
         accumulator += dt
@@ -96,6 +98,7 @@ def eval_genomes(genomes, config):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                raise UserExitException()
 
         if accumulator < physics_step*10:
             while accumulator >= physics_step:
@@ -122,10 +125,11 @@ def eval_genomes(genomes, config):
             nets.clear()
             running = False
             print("END")
+        
 
 
 def run_ai():
-    global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, pop, game_manager
+    global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, pop, game_manager, ge, nets
     game_manager = GameManager(screen, 0)
 
     config = neat.config.Config(
@@ -138,50 +142,77 @@ def run_ai():
 
     pop = neat.Population(config)
 
-    pop.run(eval_genomes,500)
+    try:
+        pop.run(eval_genomes, 500)
+        game_manager = None
+        ge = []
+        nets = []
+    except UserExitException:
+        game_manager = None
+        ge = []
+        nets = []
 
-def gameWindow():
+
+def gameWindow(selected_index):
     if selected_index == 1:
         run_player()
     else:
         run_ai()
 
+def main_menu():
 
-# Kolory
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
-BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    GRAY = (100, 100, 100)
+    YELLOW = (255, 255, 0)
+    BLACK = (0, 0, 0)
 
-# Font
-font = pygame.font.SysFont(None, 60)
+    font = pygame.font.Font("pixel_font.ttf", 32)       # menu options
+    title_font = pygame.font.Font("pixel_font.ttf", 56) # tytuł
+    footer_font = pygame.font.Font("pixel_font.ttf", 16)
 
-# Menu opcje
-menu_options = ["AI game", "Player game"]
-selected_index = 0
+    menu_options = ["AI game", "Player game"]
+    selected_index = 0
 
-clock = pygame.time.Clock()
+    clock = pygame.time.Clock()
+    running = True
 
-running = True
-while running:
-    screen.fill(BLACK)
+    while running:
+        screen.fill(BLACK)
 
-    # Rysowanie opcji
-    for i, option in enumerate(menu_options):
-        color = WHITE if i == selected_index else GRAY
-        text = font.render(option, True, color)
-        screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 200 + i * 80))
+        title_text = title_font.render("Jump King AI", True, YELLOW)
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 80))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+        # Menu opcji
+        for i, option in enumerate(menu_options):
+            is_selected = (i == selected_index)
+            color = WHITE if not is_selected else YELLOW
+            option_text = font.render(option, True, color)
 
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                selected_index = (selected_index - 1) % len(menu_options)
-            elif event.key == pygame.K_DOWN:
-                selected_index = (selected_index + 1) % len(menu_options)
-            elif event.key == pygame.K_RETURN:
-                gameWindow()
+            x = SCREEN_WIDTH // 2 - option_text.get_width() // 2
+            y = 220 + i * 80
+            screen.blit(option_text, (x, y))
 
-    pygame.display.flip()
-    clock.tick(60)
+            if is_selected:
+                # Wskaźnik wybranej opcji
+                pygame.draw.polygon(screen, YELLOW, [(x - 30, y + 10), (x - 10, y), (x - 10, y + 20)])
+
+        # Stopka
+        footer_text = footer_font.render("BIAI Project 2025 - Author: Jakub Haberek, Paweł Gaj", True, GRAY)
+        screen.blit(footer_text, (SCREEN_WIDTH // 2 - footer_text.get_width() // 2, SCREEN_HEIGHT - 40))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_index = (selected_index - 1) % len(menu_options)
+                elif event.key == pygame.K_DOWN:
+                    selected_index = (selected_index + 1) % len(menu_options)
+                elif event.key == pygame.K_RETURN:
+                    gameWindow(selected_index)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+main_menu()
