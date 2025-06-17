@@ -30,7 +30,7 @@ class GameManager:
         else:
             self.ai_manager = AIManager(self)
 
-        self.maxScore = 11
+        self.maxScore = self.platforms[-1].reward_level
         self.win = False
 
         gc.enable()
@@ -105,6 +105,7 @@ class GameManager:
 
     #update function executes each frame
     def update(self, delta_time):
+
         for player in self.players:
             if not self.isPlayerControlled:
                 player.move_ai(delta_time)
@@ -128,11 +129,10 @@ class GameManager:
 
                     #run player platform check function
                     player.check_new_platform(platform.id, platform.reward_level)
-
                     if platform.reward_level == self.maxScore:
+                        self.win=True
                         if self.isPlayerControlled:
                             self.victory_window()
-                            self.win=True
                             return
                     break
 
@@ -199,25 +199,34 @@ class GameManager:
             pygame.draw.rect(self.screen, p.color, p.hitbox)
 
     def victory_window(self):
-        SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+        SCREEN_WIDTH, SCREEN_HEIGHT = 1280, 720
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Victory Screen")
+        pygame.display.set_caption("Victory - Jump King AI")
 
+        # Kolory w stylu pixel-art
         WHITE = (255, 255, 255)
         BLACK = (0, 0, 0)
-        font = pygame.font.SysFont(None, 72)
+        YELLOW = (255, 230, 0)
 
-        text = font.render("You win!", True, WHITE)
-        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        # Styl retro: czcionka pixel-art
+        title_font = pygame.font.Font("pixel_font.ttf", 64)
+        message_font = pygame.font.Font("pixel_font.ttf", 48)
+        footer_font = pygame.font.Font("pixel_font.ttf", 24)
 
+        title = title_font.render("JUMP KING AI", True, YELLOW)
+        win_msg = message_font.render("YOU WIN!", True, WHITE)
+
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 100))
+        win_msg_rect = win_msg.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    
         running = True
         while running:
             screen.fill(BLACK)
-            screen.blit(text, text_rect)
+            screen.blit(title, title_rect)
+            screen.blit(win_msg, win_msg_rect)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
 
             pygame.display.flip()

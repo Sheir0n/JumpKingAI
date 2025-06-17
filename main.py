@@ -56,11 +56,11 @@ def run_player():
 
         if game_manager.win:
             running = False
+            main_menu()
 
     pygame.quit()
     sys.exit()
 
-#TODO: dorobić zamykanie okna kończące program
 def eval_genomes(genomes, config):
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, ge, nets, pop, game_manager
 
@@ -87,7 +87,7 @@ def eval_genomes(genomes, config):
     max_simulation_time = 10
     curr_simulation_time = 0
 
-    while running:
+    while running and game_manager.win == False:
         raw_dt = clock.tick(targetFrameRate) / 1000.0
         #if selected_index == 0:
         raw_dt *= speed_multiplication
@@ -126,7 +126,62 @@ def eval_genomes(genomes, config):
             running = False
             print("END")
         
+def run_best_player(best_genome, config):
+    print("Best genome running...")
+    global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, ge, nets, pop, game_manager
 
+    game_manager.players.clear()
+    running = True
+
+    player_id = 0
+
+    net = neat.nn.FeedForwardNetwork.create(best_genome, config)
+    nets.append(net)
+    best_genome.fitness = 0
+    game_manager.create_player_ai(player_id, net, best_genome)
+    ge.append((0, best_genome))
+
+    max_simulation_time = 10
+    curr_simulation_time = 0
+
+    while running and game_manager.win == False:
+        raw_dt = clock.tick(targetFrameRate) / 1000.0
+        #if selected_index == 0:
+        raw_dt *= speed_multiplication
+
+        dt = min(raw_dt, max_dt)
+        accumulator += dt
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                raise UserExitException()
+
+        if accumulator < physics_step*10:
+            while accumulator >= physics_step:
+                game_manager.update(physics_step)
+                accumulator -= physics_step
+        else:
+            accumulator = 0
+            game_manager.update(physics_step)
+
+        screen.fill((0, 0, 0))
+        game_manager.draw_board()
+        game_manager.update_draw()
+        pygame.display.update()
+
+        if game_manager.win:
+            running = False
+
+        if curr_simulation_time < max_simulation_time:
+            curr_simulation_time += dt
+        else:
+            game_manager.ai_manager.end_generation_calculations()
+            game_manager.players.clear()
+            ge.clear()
+            nets.clear()
+            running = False
+            print("END")
 
 def run_ai():
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, pop, game_manager, ge, nets
@@ -143,10 +198,14 @@ def run_ai():
     pop = neat.Population(config)
 
     try:
-        pop.run(eval_genomes, 500)
-        game_manager = None
+        pop.run(eval_genomes, 15)
+        game_manager.win = False
         ge = []
         nets = []
+        while game_manager.win == False:
+            game_manager = GameManager(screen, False)
+            run_best_player(pop.best_genome, config)
+
     except UserExitException:
         game_manager = None
         ge = []
