@@ -126,62 +126,69 @@ def eval_genomes(genomes, config):
             running = False
             print("END")
         
-def run_best_player(best_genome, config):
-    print("Best genome running...")
+def run_best_player(best_genomes, config):
+    print("Running best genomes as single-individual generations...")
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, ge, nets, pop, game_manager
 
-    game_manager.players.clear()
-    running = True
-
     player_id = 0
+    game_manager = GameManager(screen, 0)  # Używamy jednego GameManagera dla wszystkich
 
-    net = neat.nn.FeedForwardNetwork.create(best_genome, config)
-    nets.append(net)
-    best_genome.fitness = 0
-    game_manager.create_player_ai(player_id, net, best_genome)
-    ge.append((0, best_genome))
+    for idx, genome in enumerate(best_genomes):
+        print(f"==> Running genome #{idx + 1}")
 
-    max_simulation_time = 10
-    curr_simulation_time = 0
+        # Czyszczenie graczy i AI stanu
+        game_manager.players.clear()
+        ge.clear()
+        nets.clear()
 
-    while running and game_manager.win == False:
-        raw_dt = clock.tick(targetFrameRate) / 1000.0
-        #if selected_index == 0:
-        raw_dt *= speed_multiplication
+        # Tworzenie sieci i przypisanie gracza
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+        genome.fitness = 0
+        nets.append(net)
+        ge.append((0, genome))
+        game_manager.create_player_ai(player_id, net, genome)
 
-        dt = min(raw_dt, max_dt)
-        accumulator += dt
+        # Symulacja dla tego genomu
+        max_simulation_time = 20
+        curr_simulation_time = 0
+        running = True
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                raise UserExitException()
+        while running and not game_manager.win:
+            raw_dt = clock.tick(targetFrameRate) / 1000.0
+            raw_dt *= speed_multiplication
+            dt = min(raw_dt, max_dt)
+            accumulator += dt
 
-        if accumulator < physics_step*10:
-            while accumulator >= physics_step:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    raise UserExitException()
+
+            if accumulator < physics_step * 10:
+                while accumulator >= physics_step:
+                    game_manager.update(physics_step)
+                    accumulator -= physics_step
+            else:
+                accumulator = 0
                 game_manager.update(physics_step)
-                accumulator -= physics_step
-        else:
-            accumulator = 0
-            game_manager.update(physics_step)
 
-        screen.fill((0, 0, 0))
-        game_manager.draw_board()
-        game_manager.update_draw()
-        pygame.display.update()
+            screen.fill((0, 0, 0))
+            game_manager.draw_board()
+            game_manager.update_draw()
+            pygame.display.update()
+
+            curr_simulation_time += dt
+            if curr_simulation_time >= max_simulation_time:
+                print(f"Time limit reached for genome #{idx + 1}")
+                break
 
         if game_manager.win:
-            running = False
-
-        if curr_simulation_time < max_simulation_time:
-            curr_simulation_time += dt
+            print(f"Genome #{idx + 1} successfully completed the level!")
         else:
-            game_manager.ai_manager.end_generation_calculations()
-            game_manager.players.clear()
-            ge.clear()
-            nets.clear()
-            running = False
-            print("END")
+            print(f"Genome #{idx + 1} did not complete the level.")
+
+        # Reset flagi win dla kolejnego genomu
+        game_manager.win = False
+
 
 def run_ai():
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, pop, game_manager, ge, nets
@@ -203,9 +210,9 @@ def run_ai():
         ge = []
         nets = []
         best_genomes = game_manager.ai_manager.best_genomes
-        for g in best_genomes:
-            game_manager = GameManager(screen, False)
-            run_best_player(g, config)
+        print(len(best_genomes))
+        game_manager = GameManager(screen, False)
+        run_best_player(best_genomes, config)
 
     except UserExitException:
         game_manager = None
