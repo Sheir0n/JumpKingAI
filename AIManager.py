@@ -4,6 +4,7 @@ class AIManager:
     def __init__(self, game_manager):
         self.game_manager = weakref.ref(game_manager)
         self.fitness_record = 0
+        self.best_genomes = []
 
     def observation_func(self, player):
         curr_id = player.curr_platform_id

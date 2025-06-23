@@ -202,9 +202,10 @@ def run_ai():
         game_manager.win = False
         ge = []
         nets = []
-        while game_manager.win == False:
+        best_genomes = game_manager.ai_manager.best_genomes
+        for g in best_genomes:
             game_manager = GameManager(screen, False)
-            run_best_player(pop.best_genome, config)
+            run_best_player(g, config)
 
     except UserExitException:
         game_manager = None

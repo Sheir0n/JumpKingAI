@@ -166,7 +166,10 @@ class GameManager:
         self.level_manager.adjust_offscreen_pos(self.players, self.platforms)
 
         # checking player reaching checkpoints
-        self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
+        fast_player = self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
+        if fast_player != None:
+            if not self.isPlayerControlled:
+                self.ai_manager.best_genomes.append(fast_player.ai.genome())
 
 
     def player_over_platform_horizontally(self, platform, player):

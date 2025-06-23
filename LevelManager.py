@@ -27,6 +27,8 @@ class LevelManager:
                         self.checkpoint_starting_posy = platforms[checkpoint].total_y_pos
                         self.checkpoint_starting_posx = platforms[checkpoint].hitbox.centerx
                         print("new checkpoint", self.curr_checkpoint_platform_id)
+                        return player
+        return None
 
     def move_objects_to_checkpoint(self,players, platforms, curr_platform_rotation):
         for player in players:
