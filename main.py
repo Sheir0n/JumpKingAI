@@ -147,9 +147,10 @@ def run_best_player(best_genomes, config):
         nets.append(net)
         ge.append((0, genome))
         game_manager.create_player_ai(player_id, net, genome)
+        game_manager.disable_player_jump_limit()
 
         # Symulacja dla tego genomu
-        max_simulation_time = 20
+        max_simulation_time = 100
         curr_simulation_time = 0
         running = True
 

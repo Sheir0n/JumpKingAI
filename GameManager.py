@@ -233,3 +233,7 @@ class GameManager:
                     running = False
 
             pygame.display.flip()
+
+    def disable_player_jump_limit(self):
+        for player in self.players:
+            player.disableJumpLimit = True

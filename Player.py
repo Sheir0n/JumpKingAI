@@ -57,6 +57,8 @@ class Player:
         else:
             self.ai = None
 
+        self.disableJumpLimit = False
+
         Player.instance_count += 1
         #print("Player count:", Player.instance_count)
 
@@ -119,7 +121,7 @@ class Player:
 
     def move_ai(self, delta_time):
         #print(self.ai_suggested_direction)
-        if self.jump_count < self.ai.max_moves:
+        if self.jump_count < self.ai.max_moves or self.disableJumpLimit:
             state = self.controller.get_input()
         else:
             state = self.controller.get_empty_input()

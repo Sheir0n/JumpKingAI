@@ -24,9 +24,10 @@ class LevelManager:
                 for checkpoint in self.checkpoints:
                     if player.curr_platform_id >= checkpoint > self.curr_checkpoint_platform_id:
                         self.curr_checkpoint_platform_id = checkpoint
-                        self.checkpoint_starting_posy = platforms[checkpoint].total_y_pos
+                        self.checkpoint_starting_posy = platforms[checkpoint].hitbox.top
                         self.checkpoint_starting_posx = platforms[checkpoint].hitbox.centerx
                         print("new checkpoint", self.curr_checkpoint_platform_id)
+                        #print("checkpint posy", platforms[checkpoint].total_y_pos)
                         return player
         return None
 
