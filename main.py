@@ -50,6 +50,7 @@ def run_player():
             game_manager.update(physics_step)
 
         screen.fill((0, 0, 0))
+        game_manager.draw_bg()
         game_manager.draw_board()
         game_manager.update_draw()
         pygame.display.update()
@@ -109,6 +110,7 @@ def eval_genomes(genomes, config):
             game_manager.update(physics_step)
 
         screen.fill((0, 0, 0))
+        game_manager.draw_bg()
         game_manager.draw_board()
         game_manager.update_draw()
         pygame.display.update()
@@ -173,6 +175,7 @@ def run_best_player(best_genomes, config):
                 game_manager.update(physics_step)
 
             screen.fill((0, 0, 0))
+            game_manager.draw_bg()
             game_manager.draw_board()
             game_manager.update_draw()
             pygame.display.update()
@@ -228,7 +231,6 @@ def gameWindow(selected_index):
         run_ai()
 
 def main_menu():
-
     WHITE = (255, 255, 255)
     GRAY = (100, 100, 100)
     YELLOW = (255, 255, 0)

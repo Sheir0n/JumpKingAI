@@ -5,6 +5,7 @@ from Player import Player
 from Platform import Platform
 from LevelManager import LevelManager
 from AIManager import AIManager
+from Background import Background
 import os
 import gc
 
@@ -32,8 +33,9 @@ class GameManager:
 
         self.maxScore = self.platforms[-1].reward_level
         self.win = False
-
         gc.enable()
+
+        self.background = Background("textures/bg.png", self.screen_width, self.screen_height,4)
 
     #player controlled
     def create_player(self, id):
@@ -184,12 +186,16 @@ class GameManager:
         else:
             return False
 
+    def move_to_checkpoint(self):
+        self.level_manager.move_objects_to_checkpoint(self.players,self.platforms,self.curr_platform_rotation)
+
+    def draw_bg(self):
+        self.background.update_offset(self.level_manager.curr_screen_id)
+        self.screen.blit(self.background.image, (0, 0), self.background.rect)
+
     def draw_board(self):
         for platform in self.platforms:
             pygame.draw.rect(self.screen, (0, 200, 100), platform.hitbox)
-
-    def move_to_checkpoint(self):
-        self.level_manager.move_objects_to_checkpoint(self.players,self.platforms,self.curr_platform_rotation)
 
     # player and object graphics
     def update_draw(self):
