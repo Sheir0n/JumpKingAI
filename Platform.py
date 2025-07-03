@@ -8,6 +8,11 @@ class Platform:
         self.total_y_pos = self.hitbox.top
 
         self.base_pos = (x_pos,y_pos)
+        try:
+            self.image = pygame.image.load(f"textures/pl_{id}.png").convert()
+        except (pygame.error, FileNotFoundError):
+            self.image = pygame.Surface((width, height))
+            self.image.fill((0, 128, 32))
 
     def reset_pos(self):
         self.hitbox.x = self.base_pos[0]

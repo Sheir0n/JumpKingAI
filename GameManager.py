@@ -35,7 +35,7 @@ class GameManager:
         self.win = False
         gc.enable()
 
-        self.background = Background("textures/bg.png", self.screen_width, self.screen_height,4)
+        self.background = Background("textures/bg.png", self.screen_width, self.screen_height,5)
 
     #player controlled
     def create_player(self, id):
@@ -195,7 +195,7 @@ class GameManager:
 
     def draw_board(self):
         for platform in self.platforms:
-            pygame.draw.rect(self.screen, (0, 200, 100), platform.hitbox)
+            self.screen.blit(platform.image, platform.hitbox.topleft)
 
     # player and object graphics
     def update_draw(self):
