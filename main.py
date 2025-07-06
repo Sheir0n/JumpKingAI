@@ -1,6 +1,7 @@
 import pygame
 import sys
 import neat
+import pickle
 from GameManager import GameManager
 from UserExitException import UserExitException
 
@@ -57,7 +58,9 @@ def run_player():
 
         if game_manager.win:
             running = False
+            game_manager = None
             main_menu()
+            break
 
     pygame.quit()
     sys.exit()
@@ -129,15 +132,12 @@ def eval_genomes(genomes, config):
             print("END")
         
 def run_best_player(best_genomes, config):
-    print("Running best genomes as single-individual generations...")
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, ge, nets, pop, game_manager
 
     player_id = 0
     game_manager = GameManager(screen, 0)  # Używamy jednego GameManagera dla wszystkich
 
     for idx, genome in enumerate(best_genomes):
-        print(f"==> Running genome #{idx + 1}")
-
         # Czyszczenie graczy i AI stanu
         game_manager.players.clear()
         ge.clear()
@@ -152,7 +152,7 @@ def run_best_player(best_genomes, config):
         game_manager.disable_player_jump_limit()
 
         # Symulacja dla tego genomu
-        max_simulation_time = 100
+        max_simulation_time = 10
         curr_simulation_time = 0
         running = True
 
@@ -185,11 +185,6 @@ def run_best_player(best_genomes, config):
                 print(f"Time limit reached for genome #{idx + 1}")
                 break
 
-        if game_manager.win:
-            print(f"Genome #{idx + 1} successfully completed the level!")
-        else:
-            print(f"Genome #{idx + 1} did not complete the level.")
-
         # Reset flagi win dla kolejnego genomu
         game_manager.win = False
 
@@ -214,8 +209,9 @@ def run_ai():
         ge = []
         nets = []
         best_genomes = game_manager.ai_manager.best_genomes
-        print(len(best_genomes))
         game_manager = GameManager(screen, False)
+        with open("best_genomes.pkl", "wb") as f:
+            pickle.dump(best_genomes, f)
         run_best_player(best_genomes, config)
 
     except UserExitException:
@@ -223,12 +219,83 @@ def run_ai():
         ge = []
         nets = []
 
+def run_from_file(filepath):
+    global accumulator, physics_step, max_dt, running, targetFrameRate, clock, speed_multiplication, pop, game_manager, ge, nets
+    game_manager = GameManager(screen, 0)
+
+    config = neat.config.Config(
+        neat.DefaultGenome,
+        neat.DefaultReproduction,
+        neat.DefaultSpeciesSet,
+        neat.DefaultStagnation,
+        'neat-config.txt'
+    )
+
+    pop = neat.Population(config)
+
+    try:
+        ge = []
+        nets = []
+        try:
+            with open(filepath, "rb") as f:
+                best_genomes = pickle.load(f)
+            game_manager = GameManager(screen, False)
+            run_best_player(best_genomes, config)
+        except FileNotFoundError:
+            game_manager = None
+            ge = []
+            nets = []
+            config_not_found_window()
+
+    except UserExitException:
+        game_manager = None
+        ge = []
+        nets = []
+
+def config_not_found_window():
+    pygame.init()
+
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+    RED = (255, 80, 80)
+    
+    pygame.display.set_caption("Configuration Error")
+
+    font = pygame.font.Font("pixel_font.ttf", 32)
+    title_font = pygame.font.Font("pixel_font.ttf", 48)
+
+    running = True
+    clock = pygame.time.Clock()
+
+    while running:
+        screen.fill(BLACK)
+
+        title_text = title_font.render("Error", True, RED)
+        message_text = font.render("Configuration file not found.", True, WHITE)
+        message_text_2 = font.render("Run AI Game to generate one.", True, WHITE)
+
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 180))
+        screen.blit(message_text, (SCREEN_WIDTH // 2 - message_text.get_width() // 2, 280))
+        screen.blit(message_text_2, (SCREEN_WIDTH // 2 - message_text_2.get_width() // 2, 330))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                running = False  # Zamknięcie po naciśnięciu klawisza
+
+        pygame.display.flip()
+        clock.tick(60)
+
+
 
 def gameWindow(selected_index):
     if selected_index == 1:
         run_player()
-    else:
+    elif selected_index == 0:
         run_ai()
+    else:
+        run_from_file("best_genomes.pkl")
 
 def main_menu():
     WHITE = (255, 255, 255)
@@ -240,7 +307,7 @@ def main_menu():
     title_font = pygame.font.Font("pixel_font.ttf", 56) # tytuł
     footer_font = pygame.font.Font("pixel_font.ttf", 16)
 
-    menu_options = ["AI game", "Player game"]
+    menu_options = ["AI game", "Player game", "Best genome game"]
     selected_index = 0
 
     clock = pygame.time.Clock()
