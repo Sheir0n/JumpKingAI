@@ -153,7 +153,7 @@ def run_best_player(best_genomes, config):
         game_manager.disable_player_jump_limit()
 
         # Symulacja dla tego genomu
-        max_simulation_time = 180
+        max_simulation_time = 30
         curr_simulation_time = 0
         running = True
 
