@@ -9,7 +9,7 @@ class Platform:
 
         self.base_pos = (x_pos,y_pos)
         try:
-            self.image = pygame.image.load(f"textures/pl_{id}.png").convert()
+            self.image = pygame.image.load(f"textures/pl_{id}.png").convert_alpha()
         except (pygame.error, FileNotFoundError):
             self.image = pygame.Surface((width, height))
             self.image.fill((0, 128, 32))

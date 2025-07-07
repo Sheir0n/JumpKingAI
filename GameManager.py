@@ -35,7 +35,7 @@ class GameManager:
         self.win = False
         gc.enable()
 
-        self.background = Background("textures/bg.png", self.screen_width, self.screen_height,5)
+        self.background = Background("textures/bg.png", self.screen_width, self.screen_height,4)
 
     #player controlled
     def create_player(self, id):
@@ -47,9 +47,11 @@ class GameManager:
     #ai_controlled
     def create_player_ai(self, player_id, net, genome):
         #spawn player standing at position center
+        self.level_manager.reset_screens_to_zero(self.players, self.platforms)
         player = Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, player_id, self.screen_height)
         player.create_player_ai(net, self.ai_manager.observation_func, genome)
         self.players.append(player)
+        print("spawned at: ", self.level_manager.checkpoint_starting_posx, "", self.level_manager.checkpoint_starting_posy)
         return player
 
     def generate_platforms(self):

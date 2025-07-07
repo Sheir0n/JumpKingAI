@@ -20,6 +20,7 @@ running = True
 targetFrameRate = 144
 speed_multiplication = 3
 clock = pygame.time.Clock()
+iteration_count = 250
 
 game_manager = None
 
@@ -152,7 +153,7 @@ def run_best_player(best_genomes, config):
         game_manager.disable_player_jump_limit()
 
         # Symulacja dla tego genomu
-        max_simulation_time = 10
+        max_simulation_time = 180
         curr_simulation_time = 0
         running = True
 
@@ -204,7 +205,7 @@ def run_ai():
     pop = neat.Population(config)
 
     try:
-        pop.run(eval_genomes, 15)
+        pop.run(eval_genomes, iteration_count)
         game_manager.win = False
         ge = []
         nets = []

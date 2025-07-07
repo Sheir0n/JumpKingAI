@@ -12,9 +12,9 @@ class LevelManager:
 
         self.curr_checkpoint_platform_id = 0
 
-        self.checkpoints = {0,3,7}
-        self.checkpoint_starting_posx = platforms[0].hitbox.centerx
-        self.checkpoint_starting_posy = platforms[0].hitbox.top
+        self.checkpoints = {0,3,7,11,15,18}
+        self.checkpoint_starting_posy = platforms[self.curr_checkpoint_platform_id].total_y_pos
+        self.checkpoint_starting_posx = platforms[self.curr_checkpoint_platform_id].hitbox.centerx
 
         self.rotating_platforms = False
 
@@ -24,8 +24,8 @@ class LevelManager:
                 for checkpoint in self.checkpoints:
                     if player.curr_platform_id >= checkpoint > self.curr_checkpoint_platform_id:
                         self.curr_checkpoint_platform_id = checkpoint
-                        self.checkpoint_starting_posy = platforms[checkpoint].hitbox.top
-                        self.checkpoint_starting_posx = platforms[checkpoint].hitbox.centerx
+                        self.checkpoint_starting_posy = platforms[self.curr_checkpoint_platform_id].total_y_pos
+                        self.checkpoint_starting_posx = platforms[self.curr_checkpoint_platform_id].hitbox.centerx
                         print("new checkpoint", self.curr_checkpoint_platform_id)
                         #print("checkpint posy", platforms[checkpoint].total_y_pos)
                         return player
@@ -76,3 +76,13 @@ class LevelManager:
 
         for platform in platforms:
             platform.hitbox.top += self.screen_height * offset_direction
+
+    def reset_screens_to_zero(self, players, platforms):
+        offset_direction = -self.curr_screen_id
+
+        self.move_all(players, platforms, offset_direction)
+
+        self.curr_screen_id = 0
+
+        for player in players:
+            player.screen_count += offset_direction

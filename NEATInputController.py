@@ -13,17 +13,7 @@ class NEATInputController(InputController):
         inputs = self.obs_fn()
         direction, jump_direction, jump_trigger, jump_strength = self.net.activate(inputs)
 
-        raw_strength = (jump_strength + 1) / 2
-        if raw_strength < 0.2:
-            final_strength = 0.2
-        elif raw_strength < 0.4:
-            final_strength = 0.4
-        elif raw_strength < 0.6:
-            final_strength = 0.6
-        elif raw_strength < 0.8:
-            final_strength = 0.8
-        else:
-            final_strength = 1.0
+        final_strength = (jump_strength + 1) / 2
 
         return {
             "left": direction > 0.2,
