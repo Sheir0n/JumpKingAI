@@ -51,7 +51,7 @@ class GameManager:
         player = Player(self.level_manager.checkpoint_starting_posx, self.level_manager.checkpoint_starting_posy, self.isPlayerControlled, player_id, self.screen_height)
         player.create_player_ai(net, self.ai_manager.observation_func, genome)
         self.players.append(player)
-        print("spawned at: ", self.level_manager.checkpoint_starting_posx, "", self.level_manager.checkpoint_starting_posy)
+        #print("spawned at: ", self.level_manager.checkpoint_starting_posx, "", self.level_manager.checkpoint_starting_posy)
         return player
 
     def generate_platforms(self):
