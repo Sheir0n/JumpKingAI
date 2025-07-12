@@ -57,7 +57,7 @@ class Player:
         else:
             self.ai = None
 
-        self.disableJumpLimit = False
+        self.disable_jumping = False
 
         Player.instance_count += 1
         #print("Player count:", Player.instance_count)
@@ -65,6 +65,7 @@ class Player:
 
     # used by AI Manager
     def create_player_ai(self, neat_network, get_observation, genome):
+        weak_self = weakref.ref(self)
         weak_self = weakref.ref(self)
 
         def safe_observation():
@@ -121,7 +122,7 @@ class Player:
 
     def move_ai(self, delta_time):
         #print(self.ai_suggested_direction)
-        if self.jump_count < self.ai.max_moves or self.disableJumpLimit:
+        if self.jump_count < self.ai.max_moves and not self.disable_jumping:
             state = self.controller.get_input()
         else:
             state = self.controller.get_empty_input()

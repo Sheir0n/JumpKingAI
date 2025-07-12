@@ -37,6 +37,9 @@ class GameManager:
 
         self.background = Background("textures/bg.png", self.screen_width, self.screen_height,4)
 
+        self.disable_players_on_checkpoint = False
+        self.end_generation_early = False
+
     #player controlled
     def create_player(self, id):
         #spawn player standing at position center
@@ -109,6 +112,16 @@ class GameManager:
 
     #update function executes each frame
     def update(self, delta_time):
+        # checking player reaching checkpoints
+        first_player = self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
+        if first_player != None:
+            if not self.isPlayerControlled:
+                self.ai_manager.best_genomes.append(first_player.ai.genome())
+            if self.disable_players_on_checkpoint:
+                for player in self.players:
+                    print("disabling player")
+                    player.disable_jumping = True
+                    self.end_generation_early = True
 
         for player in self.players:
             if not self.isPlayerControlled:
@@ -169,11 +182,6 @@ class GameManager:
         # off screen offset adjustment
         self.level_manager.adjust_offscreen_pos(self.players, self.platforms)
 
-        # checking player reaching checkpoints
-        fast_player = self.level_manager.check_checkpoint_platform_id(self.players, self.platforms)
-        if fast_player != None:
-            if not self.isPlayerControlled:
-                self.ai_manager.best_genomes.append(fast_player.ai.genome())
 
 
     def player_over_platform_horizontally(self, platform, player):
@@ -241,7 +249,3 @@ class GameManager:
                     running = False
 
             pygame.display.flip()
-
-    def disable_player_jump_limit(self):
-        for player in self.players:
-            player.disableJumpLimit = True

@@ -150,14 +150,16 @@ def run_best_player(best_genomes, config):
         nets.append(net)
         ge.append((0, genome))
         game_manager.create_player_ai(player_id, net, genome)
-        game_manager.disable_player_jump_limit()
+        game_manager.disable_players_on_checkpoint = True
+        game_manager.end_generation_early = False
 
         # Symulacja dla tego genomu
-        max_simulation_time = 30
+        max_simulation_time = 15
         curr_simulation_time = 0
         running = True
+        last_frame_after_win = False
 
-        while running and not game_manager.win:
+        while running and (not game_manager.win or not last_frame_after_win):
             raw_dt = clock.tick(targetFrameRate) / 1000.0
             raw_dt *= speed_multiplication
             dt = min(raw_dt, max_dt)
@@ -186,8 +188,16 @@ def run_best_player(best_genomes, config):
                 print(f"Time limit reached for genome #{idx + 1}")
                 break
 
+            if game_manager.end_generation_early:
+                running = False
+
+            #1 last frame for update logic
+            if game_manager.win:
+                last_frame_after_win = True
+
         # Reset flagi win dla kolejnego genomu
         game_manager.win = False
+        last_frame_after_win = False
 
 
 def run_ai():
