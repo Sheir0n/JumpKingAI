@@ -39,6 +39,8 @@ class GameManager:
 
         self.disable_players_on_checkpoint = False
         self.end_generation_early = False
+        self.draw_king_texture = False
+        self.king_texture = pygame.image.load(f"textures/king.png").convert_alpha()
 
     #player controlled
     def create_player(self, id):
@@ -209,13 +211,18 @@ class GameManager:
 
     # player and object graphics
     def update_draw(self):
-        if not self.isPlayerControlled:
-            for p in self.players:
-                p.ai.change_fitness_color(self.ai_manager.fitness_record)
-               # print("im colorful")
+        if not self.draw_king_texture:
+            if not self.isPlayerControlled:
+                for p in self.players:
+                    p.ai.change_fitness_color(self.ai_manager.fitness_record)
+                   # print("im colorful")
 
-        for p in self.players:
-            pygame.draw.rect(self.screen, p.color, p.hitbox)
+            for p in self.players:
+                pygame.draw.rect(self.screen, p.color, p.hitbox)
+        else:
+            for p in self.players:
+                self.screen.blit(self.king_texture, p.hitbox.topleft)
+
 
     def victory_window(self):
         SCREEN_WIDTH, SCREEN_HEIGHT = 1280, 720

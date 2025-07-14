@@ -31,6 +31,7 @@ global pop
 def run_player():
     global accumulator, physics_step, max_dt, running, targetFrameRate, clock
     game_manager = GameManager(screen, 1)
+    game_manager.draw_king_texture = True
     running = True
     while running:
         raw_dt = clock.tick(targetFrameRate) / 1000.0
@@ -137,6 +138,7 @@ def run_best_player(best_genomes, config):
 
     player_id = 0
     game_manager = GameManager(screen, 0)  # Używamy jednego GameManagera dla wszystkich
+    game_manager.draw_king_texture = True
 
     for idx, genome in enumerate(best_genomes):
         # Czyszczenie graczy i AI stanu
@@ -161,7 +163,6 @@ def run_best_player(best_genomes, config):
 
         while running and (not game_manager.win or not last_frame_after_win):
             raw_dt = clock.tick(targetFrameRate) / 1000.0
-            raw_dt *= speed_multiplication
             dt = min(raw_dt, max_dt)
             accumulator += dt
 
